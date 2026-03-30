@@ -1,11 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* ── Web-specific overrides for React Native Web ────────────────── */
 
-@layer base {
-  html, body, #root {
+html, body, #root {
     background-color: #0f0e1a;
     color: #e0e7ff;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -64,20 +59,12 @@
   *::-webkit-scrollbar { width: 6px; }
   *::-webkit-scrollbar-track { background: transparent; }
   *::-webkit-scrollbar-thumb { background-color: #312e5a; border-radius: 3px; }
-}
 
-/* ── Layout helpers for RNW ─────────────────────────────────────── */
-/* RNW renders Views as divs. NativeWind's className prop maps to
-   inline styles at runtime, but some flex/centering props don't
-   translate perfectly. These selectors target common RNW patterns. */
-
-@layer utilities {
-  /* Auth screens — center the form on larger screens */
-  [data-testid="login-container"],
-  [data-testid="signup-container"],
-  [data-testid="join-container"] {
-    max-width: 440px;
-    margin: 0 auto;
-    width: 100%;
-  }
+/* ── Auth screens — center the form on larger screens ──────────── */
+[data-testid="login-container"],
+[data-testid="signup-container"],
+[data-testid="join-container"] {
+  max-width: 440px;
+  margin: 0 auto;
+  width: 100%;
 }
