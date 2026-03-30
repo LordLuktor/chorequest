@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "ChoreQuest",
+    "slug": "chorequest",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "chorequest",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0e1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chorequest.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ChoreQuest uses your location to show your family where you are on the family map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ChoreQuest uses background location to keep your family map updated.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.chorequest.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f0e1a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
+    },
+    "updates": {
+      "url": "https://chores.steinmetz.ltd/api/expo-updates"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "ChoreQuest uses your location to show your family where you are.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
+    ]
+  }
+}
