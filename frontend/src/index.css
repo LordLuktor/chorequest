@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  --color-surface: var(--theme-surface);
+  --color-surface-raised: var(--theme-surface-raised);
+  --color-surface-overlay: var(--theme-surface-overlay);
+  --color-border: var(--theme-border);
+  --color-text: var(--theme-text);
+  --color-text-muted: var(--theme-text-muted);
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+}
+
+/* Dark theme (default) */
+:root, .dark {
+  --theme-surface: #0f0e1a;
+  --theme-surface-raised: #1a1830;
+  --theme-surface-overlay: #252244;
+  --theme-border: #312e5a;
+  --theme-text: #e0e7ff;
+  --theme-text-muted: #94a3b8;
+}
+
+/* Light theme */
+.light {
+  --theme-surface: #f8fafc;
+  --theme-surface-raised: #ffffff;
+  --theme-surface-overlay: #f1f5f9;
+  --theme-border: #e2e8f0;
+  --theme-text: #1e293b;
+  --theme-text-muted: #64748b;
+}
+
+body {
+  @apply bg-surface text-text antialiased;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-border) transparent;
+}
