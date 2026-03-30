@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: chorequest-frontend:latest
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    networks:
+      - traefik-public
+      - chores_internal
+    deploy:
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.http.routers.chorequest.rule=Host(`chores.steinmetz.ltd`)
+        - traefik.http.routers.chorequest.entrypoints=websecure
+        - traefik.http.routers.chorequest.tls.certresolver=letsencrypt
+        - traefik.http.services.chorequest.loadbalancer.server.port=80
+        # Security headers
+        - traefik.http.routers.chorequest.middlewares=chorequest-security
+        - traefik.http.middlewares.chorequest-security.headers.stsSeconds=31536000
+        - traefik.http.middlewares.chorequest-security.headers.stsIncludeSubdomains=true
+        - traefik.http.middlewares.chorequest-security.headers.stsPreload=true
+        - traefik.http.middlewares.chorequest-security.headers.frameDeny=true
+        - traefik.http.middlewares.chorequest-security.headers.contentTypeNosniff=true
+        - traefik.http.middlewares.chorequest-security.headers.browserXssFilter=true
+        - traefik.http.middlewares.chorequest-security.headers.referrerPolicy=strict-origin-when-cross-origin
+        - traefik.http.middlewares.chorequest-security.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()
+      resources:
+        limits:
+          memory: 128M
+      replicas: 1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  api:
+    image: chorequest-api:latest
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: chorequest
+      DB_USER: chorequest
+      PORT: "4000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    secrets:
+      - chorequest_db_password
+      - chorequest_jwt_secret
+      - chorequest_vapid_public
+      - chorequest_vapid_private
+      - chorequest_vapid_email
+      - chorequest_redis_password
+    networks:
+      - chores_internal
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      sh -c 'redis-server --requirepass "$$(cat /run/secrets/chorequest_redis_password)" --maxmemory 128mb --maxmemory-policy allkeys-lru'
+    secrets:
+      - chorequest_redis_password
+    networks:
+      - chores_internal
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$(cat /run/secrets/chorequest_redis_password) ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: chorequest
+      POSTGRES_USER: chorequest
+      POSTGRES_PASSWORD_FILE: /run/secrets/chorequest_db_password
+    secrets:
+      - chorequest_db_password
+    volumes:
+      - chores_pgdata:/var/lib/postgresql/data
+    networks:
+      - chores_internal
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+      placement:
+        constraints:
+          - node.role == manager
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chorequest"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  chores_pgdata:
+
+networks:
+  chores_internal:
+    driver: overlay
+  traefik-public:
+    external: true
+
+secrets:
+  chorequest_db_password:
+    external: true
+  chorequest_jwt_secret:
+    external: true
+  chorequest_vapid_public:
+    external: true
+  chorequest_vapid_private:
+    external: true
+  chorequest_vapid_email:
+    external: true
+  chorequest_redis_password:
+    external: true
