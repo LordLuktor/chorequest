@@ -88,7 +88,7 @@ export default function SignupScreen() {
                 className="w-full px-4 py-3.5 rounded-xl bg-surface-2 border border-primary-950 text-white text-base"
                 value={password} onChangeText={setPassword}
                 placeholder="Choose a password" placeholderTextColor="#5c6278"
-                secureTextEntry
+                secureTextEntry autoCapitalize="none" autoCorrect={false}
               />
             </View>
 

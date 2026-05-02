@@ -80,6 +80,8 @@ export default function LoginScreen() {
                   placeholder="Enter your password"
                   placeholderTextColor="#5c6278"
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
 
@@ -109,8 +111,17 @@ export default function LoginScreen() {
               </Pressable>
             </View>
 
+            {/* Forgot password */}
+            <View style={{ marginTop: 16, alignItems: 'center' }}>
+              <Link href="/(auth)/forgot-password" asChild>
+                <Pressable>
+                  <Text style={{ color: '#94a3b8', fontSize: 13 }}>Forgot password?</Text>
+                </Pressable>
+              </Link>
+            </View>
+
             {/* Links */}
-            <View style={{ marginTop: 32, alignItems: 'center', gap: 12 }}>
+            <View style={{ marginTop: 24, alignItems: 'center', gap: 12 }}>
               <Link href="/(auth)/signup" asChild>
                 <Pressable>
                   <Text style={{ color: '#818cf8', fontSize: 14 }}>Create a new household</Text>
@@ -120,6 +131,13 @@ export default function LoginScreen() {
                 <Pressable>
                   <Text style={{ color: '#94a3b8', fontSize: 14 }}>
                     Have an invite code? <Text style={{ color: '#818cf8' }}>Join family</Text>
+                  </Text>
+                </Pressable>
+              </Link>
+              <Link href="/(auth)/display-login" asChild>
+                <Pressable>
+                  <Text style={{ color: '#94a3b8', fontSize: 14 }}>
+                    Shared screen? <Text style={{ color: '#818cf8' }}>Display Login</Text>
                   </Text>
                 </Pressable>
               </Link>

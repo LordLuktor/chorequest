@@ -83,8 +83,18 @@ tasksRouter.post('/:id/complete', async (req, res) => {
     if (task.status !== 'pending') { res.status(400).json({ message: 'Task is not pending' }); return; }
 
     const now = new Date();
-    const isEarlyBird = now.getHours() < 12;
-    const pointsAwarded = task.template_points + (isEarlyBird ? 1 : 0);
+    let pointsAwarded = task.template_points;
+
+    // Check bonus settings for this household
+    const bonusSettings = await db('allowance_settings')
+      .where('household_id', req.householdId)
+      .first();
+
+    let bonusEarlyBird = 0;
+    if (bonusSettings?.bonus_early_bird && now.getHours() < 12) {
+      bonusEarlyBird = bonusSettings.bonus_early_bird_amount || 1;
+      pointsAwarded += bonusEarlyBird;
+    }
 
     const [updated] = await db('task_instances')
       .where({ id })
@@ -105,11 +115,27 @@ tasksRouter.post('/:id/complete', async (req, res) => {
       .where({ id: pointsRecipient })
       .increment('points_total', pointsAwarded);
 
+    // Check daily completion bonus — did this member finish ALL tasks for today?
+    let bonusDailyCompletion = 0;
+    if (bonusSettings?.bonus_daily_completion) {
+      const todayStr = now.toISOString().split('T')[0];
+      const todayTasks = await db('task_instances')
+        .where({ assigned_to: pointsRecipient, due_date: todayStr, household_id: req.householdId });
+      const allDone = todayTasks.length > 0 && todayTasks.every((t: any) => t.status === 'completed');
+      if (allDone) {
+        bonusDailyCompletion = bonusSettings.bonus_daily_completion_amount || 1;
+        await db('household_members')
+          .where({ id: pointsRecipient })
+          .increment('points_total', bonusDailyCompletion);
+      }
+    }
+
     const newAchievements = await checkAchievements(pointsRecipient);
 
     await logAction('task_completed', 'task_instance', id, member_id, {
       points_awarded: pointsAwarded,
-      early_bird: isEarlyBird,
+      bonus_early_bird: bonusEarlyBird,
+      bonus_daily_completion: bonusDailyCompletion,
       template_id: task.template_id,
     }, req.householdId);
 

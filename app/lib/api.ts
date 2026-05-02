@@ -94,11 +94,26 @@ export const authJoin = (data: {
 export const authLogout = (refreshToken: string) =>
   request('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) });
 
+export const requestPasswordReset = (email: string) =>
+  request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+
+export const resetPasswordWithToken = (token: string, newPassword: string) =>
+  request<{ message: string }>('/auth/reset-password-token', { method: 'POST', body: JSON.stringify({ token, newPassword }) });
+
 export const authMe = () => request<{
   user: { id: string; email: string | null; username: string | null; displayName: string; isManaged: boolean };
   household: { id: string; name: string; inviteCode?: string; inviteExpiresAt?: string };
   member: { id: number; name: string; role: string; avatarColor: string };
 }>('/auth/me');
+
+export const resetMemberPassword = (memberId: number, newPassword: string) =>
+  request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ memberId, newPassword }) });
+
+export const updateMemberEmail = (memberId: number, email: string) =>
+  request('/auth/update-email', { method: 'POST', body: JSON.stringify({ memberId, email }) });
+
+export const deleteMember = (id: number) =>
+  request<void>(`/members/${id}`, { method: 'DELETE' });
 
 export const authCreateChild = (data: {
   username: string; password: string; displayName: string; avatarColor?: string;
@@ -113,11 +128,17 @@ export interface Member {
   role: string;
   is_parent?: boolean;
   allowance_balance: number;
+  easy_mode?: boolean;
+  pin_hash?: string;
+  email?: string | null;
+  username?: string | null;
 }
 
 export const getMembers = () => request<Member[]>('/members');
 export const createMember = (data: { name: string; avatar_color: string }) =>
   request<Member>('/members', { method: 'POST', body: JSON.stringify(data) });
+export const updateMember = (id: number, data: Partial<Member>) =>
+  request<Member>(`/members/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 // ── Task Templates API ───────────────────────────────────────────
 export interface TaskTemplate {
@@ -248,7 +269,19 @@ export interface AllowanceSettings {
   rate_per_point: number;
   all_or_nothing: boolean;
   enabled: boolean;
+  reward_mode: 'allowance' | 'points_economy';
+  bonus_early_bird: boolean;
+  bonus_early_bird_amount: number;
+  bonus_daily_completion: boolean;
+  bonus_daily_completion_amount: number;
+  bonus_weekly_streak: boolean;
+  bonus_weekly_streak_amount: number;
 }
+
+export const cashOutPoints = (memberId: number, points: number) =>
+  request<{ message: string; points_remaining: number; allowance_balance: number }>(
+    '/allowance/cashout', { method: 'POST', body: JSON.stringify({ member_id: memberId, points }) }
+  );
 
 export interface AllowanceBalance {
   id: number;
@@ -271,6 +304,8 @@ export interface AllowanceLedgerEntry {
 }
 
 export const getAllowanceSettings = () => request<AllowanceSettings>('/allowance/settings');
+export const updateAllowanceSettings = (data: Partial<AllowanceSettings>) =>
+  request<AllowanceSettings>('/allowance/settings', { method: 'PUT', body: JSON.stringify(data) });
 export const getAllowanceBalances = () => request<AllowanceBalance[]>('/allowance/balances');
 export const getAllowanceLedger = (params: { member?: number; limit?: number }) => {
   const search = new URLSearchParams();
@@ -307,3 +342,175 @@ export const getTrends = (period = 7) =>
 
 // ── Household API ────────────────────────────────────────────────
 export const regenerateInvite = () => request<{ code: string; expiresAt: string }>('/auth/invite', { method: 'POST' });
+
+// ── Shopping List API ───────────────────────────────────────────
+export interface ShoppingItem {
+  id: number;
+  text: string;
+  category: string;
+  added_by: number | null;
+  added_by_name: string | null;
+  is_checked: boolean;
+  checked_by: number | null;
+  checked_by_name: string | null;
+  created_at: string;
+  checked_at: string | null;
+}
+
+export const getShoppingList = () => request<ShoppingItem[]>('/shopping');
+
+export const addShoppingItem = (text: string, category?: string) =>
+  request<ShoppingItem>('/shopping', { method: 'POST', body: JSON.stringify({ text, category }) });
+
+export const toggleShoppingItem = (id: number) =>
+  request<ShoppingItem>(`/shopping/${id}/check`, { method: 'PUT' });
+
+export const deleteShoppingItem = (id: number) =>
+  request<void>(`/shopping/${id}`, { method: 'DELETE' });
+
+export const clearCheckedItems = () =>
+  request<void>('/shopping/checked', { method: 'DELETE' });
+
+// ── Rewards API ─────────────────────────────────────────────────
+export interface Reward {
+  id: number;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  cost_points: number;
+  is_active: boolean;
+}
+
+export interface RewardRedemption {
+  id: number;
+  reward_id: number;
+  reward_title: string;
+  member_id: number;
+  member_name: string;
+  points_spent: number;
+  status: string;
+  redeemed_at: string;
+}
+
+export const getRewards = () => request<Reward[]>('/rewards');
+
+export const createReward = (data: { title: string; description?: string; icon?: string; cost_points: number }) =>
+  request<Reward>('/rewards', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateReward = (id: number, data: Partial<Reward>) =>
+  request<Reward>(`/rewards/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteReward = (id: number) => request<void>(`/rewards/${id}`, { method: 'DELETE' });
+
+export const redeemReward = (id: number) => request(`/rewards/${id}/redeem`, { method: 'POST' });
+
+export const getRedemptions = () => request<RewardRedemption[]>('/rewards/redemptions');
+
+export const resolveRedemption = (id: number, status: 'approved' | 'denied') =>
+  request(`/rewards/redemptions/${id}/approve`, { method: 'PUT', body: JSON.stringify({ status }) });
+
+// Reward Requests (kids suggest, parents approve)
+export interface RewardRequest {
+  id: number; title: string; description: string | null; icon: string | null;
+  suggested_points: number | null; status: string;
+  requested_by: number; requested_by_name: string; avatar_color: string;
+  created_at: string;
+}
+export const submitRewardRequest = (data: { title: string; description?: string; icon?: string; suggested_points?: number }) =>
+  request<RewardRequest>('/rewards/requests', { method: 'POST', body: JSON.stringify(data) });
+export const getRewardRequests = () => request<RewardRequest[]>('/rewards/requests');
+export const resolveRewardRequest = (id: number, status: 'approved' | 'denied', cost_points?: number) =>
+  request(`/rewards/requests/${id}`, { method: 'PUT', body: JSON.stringify({ status, cost_points }) });
+
+// ── Safety API ─────────────────────────────────────────────────
+export interface SOSAlert {
+  id: number;
+  member_id: number;
+  member_name?: string;
+  latitude: number | null;
+  longitude: number | null;
+  message: string | null;
+  is_resolved: boolean;
+  resolved_by: number | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface CheckinRequest {
+  id: number;
+  requested_by: number;
+  requested_by_name?: string;
+  requested_of: number;
+  requested_of_name?: string;
+  status: string;
+  response_latitude: number | null;
+  response_longitude: number | null;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface Geofence {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  notify_on_enter: boolean;
+  notify_on_exit: boolean;
+  is_active: boolean;
+  member_ids?: number[];
+}
+
+export const triggerSOS = (data: { latitude?: number; longitude?: number; message?: string }) =>
+  request<SOSAlert>('/safety/sos', { method: 'POST', body: JSON.stringify(data) });
+
+export const getSOSAlerts = () => request<SOSAlert[]>('/safety/sos');
+
+export const resolveSOS = (id: number) =>
+  request<SOSAlert>(`/safety/sos/${id}/resolve`, { method: 'PUT' });
+
+export const requestCheckin = (memberId: number) =>
+  request<CheckinRequest>('/safety/checkin/request', { method: 'POST', body: JSON.stringify({ memberId }) });
+
+export const respondCheckin = (requestId: number, latitude: number, longitude: number) =>
+  request<CheckinRequest>('/safety/checkin/respond', { method: 'POST', body: JSON.stringify({ requestId, latitude, longitude }) });
+
+export const getCheckins = () => request<CheckinRequest[]>('/safety/checkin');
+
+export const getGeofences = () => request<Geofence[]>('/safety/geofences');
+
+export const createGeofence = (data: {
+  name: string; latitude: number; longitude: number; radius_meters?: number;
+  notify_on_enter?: boolean; notify_on_exit?: boolean; memberIds?: number[];
+}) => request<Geofence>('/safety/geofences', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateGeofence = (id: number, data: Partial<Geofence & { memberIds?: number[] }>) =>
+  request<Geofence>(`/safety/geofences/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteGeofence = (id: number) =>
+  request<void>(`/safety/geofences/${id}`, { method: 'DELETE' });
+
+// ── Data Export & Account Deletion ─────────────────────────────
+export const exportUserData = () => request<any>('/auth/export');
+
+export const deleteAccount = (confirmPassword: string) =>
+  request('/auth/account', { method: 'DELETE', body: JSON.stringify({ confirmPassword }) });
+
+// ── Display Account API ─────────────────────────────────────────
+export const authPinLogin = (data: { householdId: string; pin: string }) =>
+  request<AuthResult>('/auth/pin-login', { method: 'POST', body: JSON.stringify(data) });
+
+export const authCreateDisplay = (data: { name: string; pin: string }) =>
+  request<{ user: any; member: any }>('/auth/create-display', { method: 'POST', body: JSON.stringify(data) });
+
+export const resetDisplayPin = (memberId: number, pin: string) =>
+  request<{ message: string }>('/auth/reset-display-pin', { method: 'POST', body: JSON.stringify({ memberId, pin }) });
+
+export const setUserPin = (memberId: number, pin: string) =>
+  request<{ message: string }>('/auth/set-user-pin', { method: 'POST', body: JSON.stringify({ memberId, pin }) });
+
+export const verifyUserPin = (memberId: number, pin: string) =>
+  request<{ message: string; memberId: number; memberName: string }>('/auth/verify-pin', { method: 'POST', body: JSON.stringify({ memberId, pin }) });
+
+export const getPinStatus = () =>
+  request<{ id: number; name: string; avatar_color: string; role: string; has_pin: boolean }[]>('/auth/pin-status');

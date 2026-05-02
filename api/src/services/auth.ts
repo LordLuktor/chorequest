@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import db from '../db';
 import fs from 'fs';
+import { sendWelcomeEmail } from './email';
 
 // ── JWT Secret ───────────────────────────────────────────────────
 function getJwtSecret(): string {
@@ -168,6 +169,15 @@ export async function signup(params: {
     })
     .onConflict(['household_id'])
     .ignore();
+
+  // Send welcome email (non-blocking — don't let email failure break signup)
+  if (user.email) {
+    try {
+      await sendWelcomeEmail(user.email, user.display_name, household.name);
+    } catch (emailErr) {
+      console.error('Failed to send welcome email:', emailErr);
+    }
+  }
 
   return buildAuthResult(user, member, household);
 }
@@ -362,6 +372,48 @@ export async function createChildAccount(params: {
     .returning('*');
 
   return { user, member };
+}
+
+/**
+ * PIN login for display accounts
+ */
+export async function pinLogin(params: {
+  householdCode: string;
+  pin: string;
+}): Promise<AuthResult> {
+  const { householdCode, pin } = params;
+
+  // Look up the household by invite code
+  const household = await db('households')
+    .where('invite_code', householdCode.toUpperCase().trim())
+    .first();
+
+  if (!household) {
+    throw new Error('Invalid credentials');
+  }
+
+  // Find display members in this household
+  const displayMembers = await db('household_members')
+    .where({ household_id: household.id, role: 'display' })
+    .whereNotNull('user_id')
+    .select('*');
+
+  if (displayMembers.length === 0) {
+    throw new Error('Invalid credentials');
+  }
+
+  // Try each display member's PIN
+  for (const dm of displayMembers) {
+    const user = await db('users').where('id', dm.user_id).first();
+    if (!user || !user.password_hash) continue;
+
+    const valid = await bcrypt.compare(pin, user.password_hash);
+    if (valid) {
+      return buildAuthResult(user, dm, household);
+    }
+  }
+
+  throw new Error('Invalid credentials');
 }
 
 /**

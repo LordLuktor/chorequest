@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db';
 import { getSettings, recordPayout } from '../services/allowance';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireParent } from '../middleware/auth';
 
 export const allowanceRouter = Router();
 allowanceRouter.use(requireAuth);
@@ -18,18 +18,13 @@ allowanceRouter.get('/settings', async (req, res) => {
 });
 
 // Update allowance settings (parent only)
-allowanceRouter.put('/settings', async (req, res) => {
+allowanceRouter.put('/settings', requireParent, async (req, res) => {
   try {
-    const { member_id } = req.body;
-    if (member_id) {
-      const member = await db('household_members').where({ id: member_id, household_id: req.householdId }).first();
-      if (!member?.is_parent) {
-        res.status(403).json({ message: 'Only parents can modify allowance settings' });
-        return;
-      }
-    }
 
-    const allowed = ['rate_per_point', 'all_or_nothing', 'enabled'];
+    const allowed = ['rate_per_point', 'all_or_nothing', 'enabled', 'reward_mode', 'display_mode',
+      'bonus_early_bird', 'bonus_early_bird_amount',
+      'bonus_daily_completion', 'bonus_daily_completion_amount',
+      'bonus_weekly_streak', 'bonus_weekly_streak_amount'];
     const updates: Record<string, any> = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -84,6 +79,64 @@ allowanceRouter.get('/ledger', async (req, res) => {
   } catch (err) {
     console.error('GET /allowance/ledger error:', err);
     res.status(500).json({ message: 'Failed to fetch ledger' });
+  }
+});
+
+// Cash out points → convert to allowance money (any member for themselves)
+allowanceRouter.post('/cashout', async (req, res) => {
+  try {
+    const { member_id, points } = req.body;
+    if (!member_id || !points || points <= 0) {
+      res.status(400).json({ message: 'member_id and points (positive) are required' });
+      return;
+    }
+
+    const pointsToSpend = Math.floor(points);
+    const member = await db('household_members')
+      .where({ id: member_id, household_id: req.householdId })
+      .first();
+    if (!member) { res.status(404).json({ message: 'Member not found' }); return; }
+    if (member.points_total < pointsToSpend) {
+      res.status(400).json({ message: `Not enough points. Have ${member.points_total}, need ${pointsToSpend}` });
+      return;
+    }
+
+    const settings = await db('allowance_settings').where('household_id', req.householdId).first();
+    if (!settings?.enabled) {
+      res.status(400).json({ message: 'Allowance system is not enabled' });
+      return;
+    }
+    if (settings.reward_mode !== 'points_economy') {
+      res.status(400).json({ message: 'Cash out is only available in Points Economy mode. Your household uses Allowance mode.' });
+      return;
+    }
+
+    const rate = parseFloat(settings.rate_per_point);
+    const amount = pointsToSpend * rate;
+
+    // Deduct points and add to allowance balance
+    await db('household_members').where({ id: member_id }).decrement('points_total', pointsToSpend);
+    await db('household_members').where({ id: member_id }).increment('allowance_balance', amount);
+
+    await db('allowance_ledger').insert({
+      member_id,
+      household_id: req.householdId,
+      date: new Date().toISOString().split('T')[0],
+      type: 'earned',
+      amount,
+      points_basis: pointsToSpend,
+      note: `Cashed out ${pointsToSpend} points at $${rate}/pt`,
+    });
+
+    const updated = await db('household_members').where({ id: member_id }).first();
+    res.json({
+      message: `Converted ${pointsToSpend} points to $${amount.toFixed(2)}`,
+      points_remaining: updated.points_total,
+      allowance_balance: updated.allowance_balance,
+    });
+  } catch (err) {
+    console.error('POST /allowance/cashout error:', err);
+    res.status(500).json({ message: 'Failed to cash out' });
   }
 });
 

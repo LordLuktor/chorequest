@@ -27,6 +27,7 @@ services:
         - traefik.http.middlewares.chorequest-security.headers.browserXssFilter=true
         - traefik.http.middlewares.chorequest-security.headers.referrerPolicy=strict-origin-when-cross-origin
         - traefik.http.middlewares.chorequest-security.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()
+        - "traefik.http.middlewares.chorequest-security.headers.contentSecurityPolicy=default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org; connect-src 'self' wss://chores.steinmetz.ltd https://u.expo.dev; frame-src 'self' blob: data:"
       resources:
         limits:
           memory: 128M
@@ -51,6 +52,10 @@ services:
       PORT: "4000"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      SMTP_HOST: mail.supremecluster.com
+      SMTP_PORT: "465"
+      SMTP_FROM: admin@steinmetz.ltd
+      SMTP_USER: admin@steinmetz.ltd
     secrets:
       - chorequest_db_password
       - chorequest_jwt_secret
@@ -58,6 +63,7 @@ services:
       - chorequest_vapid_private
       - chorequest_vapid_email
       - chorequest_redis_password
+      - chorequest_smtp_password
     networks:
       - chores_internal
     deploy:
@@ -144,4 +150,6 @@ secrets:
   chorequest_vapid_email:
     external: true
   chorequest_redis_password:
+    external: true
+  chorequest_smtp_password:
     external: true

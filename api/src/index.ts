@@ -15,6 +15,9 @@ import { analyticsRouter } from './routes/analytics';
 import { templateLibraryRouter } from './routes/template-library';
 import { authRouter } from './routes/auth';
 import { locationsRouter } from './routes/locations';
+import { shoppingRouter } from './routes/shopping';
+import { rewardsRouter } from './routes/rewards';
+import { safetyRouter } from './routes/safety';
 import { startScheduler } from './scheduler';
 import { cleanExpiredTokens } from './services/auth';
 import { setupWebSocket } from './websocket';
@@ -28,7 +31,7 @@ const server = http.createServer(app);
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN || 'https://chores.steinmetz.ltd',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
@@ -69,6 +72,9 @@ app.use('/api/v1/allowance', allowanceRouter);
 app.use('/api/v1/analytics', analyticsRouter);
 app.use('/api/v1/template-library', templateLibraryRouter);
 app.use('/api/v1/locations', locationsRouter);
+app.use('/api/v1/shopping', shoppingRouter);
+app.use('/api/v1/rewards', rewardsRouter);
+app.use('/api/v1/safety', safetyRouter);
 
 // Legacy routes (same routers, old paths — for current frontend until it's rebuilt)
 app.use('/api/members', membersRouter);
@@ -82,6 +88,9 @@ app.use('/api/allowance', allowanceRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/template-library', templateLibraryRouter);
 app.use('/api/locations', locationsRouter);
+app.use('/api/shopping', shoppingRouter);
+app.use('/api/rewards', rewardsRouter);
+app.use('/api/safety', safetyRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

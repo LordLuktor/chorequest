@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TextInput, Pressable, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { createTemplate, updateTemplate, type TaskTemplate, type Member } from '../lib/api';
@@ -136,28 +136,27 @@ export default function TaskFormModal({ visible, onClose, onSaved, members, temp
   }, [title, icon, points, repeatInterval, weeklyAssignments, isEditing, template, onSaved, onClose]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={{
-          flex: 1,
+    <Modal visible={visible} animationType="slide" transparent={Platform.OS === 'web'} statusBarTranslucent>
+      <View style={{
+        flex: 1,
+        backgroundColor: C.bg,
+        ...(Platform.OS === 'web' ? {
           backgroundColor: 'rgba(0,0,0,0.6)',
           justifyContent: 'center',
           alignItems: 'center',
+        } : {}),
+      }}>
+        <View style={{
+          flex: Platform.OS === 'web' ? undefined : 1,
+          width: '100%',
+          maxWidth: Platform.OS === 'web' ? 500 : undefined,
+          maxHeight: Platform.OS === 'web' ? '90%' : undefined,
+          backgroundColor: C.bg,
+          borderRadius: Platform.OS === 'web' ? 16 : 0,
+          borderWidth: Platform.OS === 'web' ? 1 : 0,
+          borderColor: C.border,
+          overflow: 'hidden',
         }}>
-          <View style={{
-            width: '100%',
-            maxWidth: 500,
-            maxHeight: '90%',
-            backgroundColor: C.bg,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: C.border,
-            overflow: 'hidden',
-            ...(Platform.OS === 'web' ? { marginHorizontal: 16 } : { marginHorizontal: 16 }),
-          }}>
             {/* Header */}
             <View style={{
               flexDirection: 'row',
@@ -413,7 +412,6 @@ export default function TaskFormModal({ visible, onClose, onSaved, members, temp
             </ScrollView>
           </View>
         </View>
-      </KeyboardAvoidingView>
     </Modal>
   );
 }

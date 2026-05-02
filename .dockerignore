@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.md
+node_modules
+app/node_modules
+api/node_modules
+frontend/node_modules
+app/dist
+api/dist
+.env
+.env.*
+*.log
+.DS_Store
+.expo
+downloads/*.apk

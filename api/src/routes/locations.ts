@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db';
 import { requireAuth } from '../middleware/auth';
 import { getIO } from '../websocket';
+import { checkGeofences } from './safety';
 
 export const locationsRouter = Router();
 locationsRouter.use(requireAuth);
@@ -37,6 +38,13 @@ locationsRouter.post('/', async (req, res) => {
 
     const io = getIO();
     if (io) io.to(`household:${householdId}`).emit('location:updated', { memberId });
+
+    // Check geofences after location update
+    try {
+      await checkGeofences(householdId, memberId, latitude, longitude);
+    } catch (geoErr) {
+      console.error('Geofence check error (non-fatal):', geoErr);
+    }
 
     res.json({ ok: true });
   } catch (err) {

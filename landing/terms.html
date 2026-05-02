@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — ChoreQuest</title>
+<meta name="description" content="ChoreQuest Terms of Service. Understand the terms and conditions for using the ChoreQuest platform.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --primary-glow: rgba(99, 102, 241, 0.35);
+  --accent: #22c55e;
+  --accent-glow: rgba(34, 197, 94, 0.3);
+  --surface-0: #07060f;
+  --surface-1: #0f0e1a;
+  --surface-2: #1a1830;
+  --surface-3: #252244;
+  --border: rgba(99, 102, 241, 0.15);
+  --border-bright: rgba(99, 102, 241, 0.3);
+  --text: #e8ecf4;
+  --text-muted: #8b92a8;
+  --text-dim: #5c6278;
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--surface-0);
+  color: var(--text);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+/* ── Noise texture overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px;
+}
+
+/* ── Navigation ── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 16px 0;
+  background: rgba(7, 6, 15, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.nav-logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.nav-logo span { color: var(--primary-light); }
+.nav-back {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 400;
+  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-back:hover { color: var(--text); }
+
+/* ── Content ── */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.legal-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 64px 24px 80px;
+}
+.legal-content h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+}
+.legal-content h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--primary-light) 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.effective-date {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 48px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.legal-content h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  margin-top: 48px;
+  margin-bottom: 16px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.legal-content h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.legal-content p {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+.legal-content ul, .legal-content ol {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.8;
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+.legal-content li {
+  margin-bottom: 8px;
+}
+.legal-content strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.legal-content a {
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.legal-content a:hover {
+  color: var(--text);
+}
+.legal-content .highlight-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+.legal-content .highlight-box p {
+  margin-bottom: 0;
+}
+
+/* ── Footer ── */
+footer {
+  padding: 32px 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+footer a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <div class="container">
+    <a href="/welcome" class="nav-logo">Chore<span>Quest</span></a>
+    <a href="/welcome" class="nav-back">&larr; Back to Home</a>
+  </div>
+</nav>
+
+<!-- ── Terms of Service Content ── -->
+<div class="legal-content">
+  <h1>Terms of <em>Service</em></h1>
+  <p class="effective-date">Effective Date: April 1, 2026</p>
+
+  <p>Welcome to ChoreQuest. These Terms of Service ("Terms") govern your use of the ChoreQuest platform, including the website at chores.steinmetz.ltd and the ChoreQuest Android application (collectively, the "Service"). The Service is operated by Scott Steinmetz ("we," "us," or "our").</p>
+
+  <p>By creating an account or using ChoreQuest, you agree to these Terms. If you do not agree, do not use the Service.</p>
+
+  <div class="highlight-box">
+    <p><strong>Plain-language summary:</strong> ChoreQuest is a free family chore platform. Be a good user, keep your account secure, and understand we provide this service as-is without guarantees. Parents are responsible for their children's use.</p>
+  </div>
+
+  <h2>1. The Service</h2>
+  <p>ChoreQuest is a household chore management platform that allows families to:</p>
+  <ul>
+    <li>Create and assign chores to household members.</li>
+    <li>Track chore completion, earn points, and maintain streaks.</li>
+    <li>Share real-time GPS location among household members (optional).</li>
+    <li>Manage rewards and achievements.</li>
+  </ul>
+  <p>ChoreQuest is provided free of charge. We reserve the right to modify, suspend, or discontinue any part of the Service at any time.</p>
+
+  <h2>2. Eligibility and Accounts</h2>
+
+  <h3>2.1 Age Requirements</h3>
+  <ul>
+    <li>You must be at least 18 years old to create a primary (household owner) account.</li>
+    <li>Children under 18 may use ChoreQuest only through accounts created and managed by a parent or legal guardian.</li>
+    <li>Children under 13 must have their accounts created by a parent or guardian in compliance with COPPA. See our <a href="/privacy">Privacy Policy</a> for details on how we handle children's data.</li>
+  </ul>
+
+  <h3>2.2 Account Security</h3>
+  <p>You are responsible for:</p>
+  <ul>
+    <li>Keeping your login credentials confidential.</li>
+    <li>All activity that occurs under your account.</li>
+    <li>Notifying us promptly at <a href="mailto:admin@steinmetz.ltd">admin@steinmetz.ltd</a> if you suspect unauthorized access to your account.</li>
+  </ul>
+  <p>Do not share your account credentials with anyone outside your household. Each person should use their own account.</p>
+
+  <h2>3. Parental Responsibility</h2>
+  <p>If you create accounts for your children or other minors in your household:</p>
+  <ul>
+    <li>You are fully responsible for their use of the Service.</li>
+    <li>You consent to our collection of limited data about them as described in our <a href="/privacy">Privacy Policy</a>.</li>
+    <li>You may review, modify, or delete their accounts and data at any time.</li>
+    <li>You control whether location sharing is enabled for their devices.</li>
+  </ul>
+
+  <h2>4. Acceptable Use</h2>
+  <p>When using ChoreQuest, you agree not to:</p>
+  <ul>
+    <li><strong>Abuse the platform</strong> — do not attempt to gain unauthorized access, exploit vulnerabilities, or interfere with the Service's operation.</li>
+    <li><strong>Misuse accounts</strong> — do not create fake accounts, impersonate others, or use the Service for any purpose other than household chore management.</li>
+    <li><strong>Harass or harm</strong> — do not use ChoreQuest to track, stalk, or monitor anyone without their knowledge and consent. Location sharing is a household feature that requires mutual participation.</li>
+    <li><strong>Reverse engineer</strong> — do not decompile, disassemble, or attempt to extract the source code of the Service, except as permitted by applicable law.</li>
+    <li><strong>Automate access</strong> — do not use bots, scrapers, or automated tools to access the Service without our written permission.</li>
+    <li><strong>Distribute malware</strong> — do not upload or transmit viruses, malicious code, or any material that could damage or compromise the Service.</li>
+  </ul>
+
+  <h2>5. GPS Location Tracking</h2>
+  <p>ChoreQuest offers optional real-time GPS location sharing among household members. By enabling this feature:</p>
+  <ul>
+    <li>You consent to the collection and sharing of your device's GPS coordinates with other members of your household.</li>
+    <li>On Android, background location tracking may operate when the app is not in the foreground, if you have granted the necessary permissions.</li>
+    <li>You may disable location sharing at any time through your profile settings.</li>
+    <li>Parents control location settings for their children's accounts.</li>
+  </ul>
+  <p>Do not enable location sharing for any person without their knowledge and consent.</p>
+
+  <h2>6. Android App Distribution</h2>
+  <p>The ChoreQuest Android app is distributed as a direct APK download from our website, not through the Google Play Store.</p>
+  <ul>
+    <li>You may need to enable "Install from unknown sources" on your Android device.</li>
+    <li>We are the sole distributor of the official ChoreQuest APK. Only download from chores.steinmetz.ltd.</li>
+    <li>We are not responsible for any issues arising from APKs obtained from unauthorized sources.</li>
+  </ul>
+
+  <h2>7. Intellectual Property</h2>
+  <p>All content, code, design, and branding of ChoreQuest are owned by Scott Steinmetz. You may not copy, modify, distribute, or create derivative works of any part of the Service without written permission.</p>
+  <p>Your household data (chore lists, member names, etc.) belongs to you. We claim no ownership over the content you create within ChoreQuest.</p>
+
+  <h2>8. Service Availability</h2>
+  <p>We strive to keep ChoreQuest available and reliable, but we do not guarantee uninterrupted service. The Service may be temporarily unavailable due to:</p>
+  <ul>
+    <li>Maintenance and updates.</li>
+    <li>Hardware or infrastructure issues.</li>
+    <li>Circumstances beyond our control (power outages, network issues, etc.).</li>
+  </ul>
+  <p>We will make reasonable efforts to notify users of planned downtime when possible.</p>
+
+  <h2>9. Disclaimer of Warranties</h2>
+  <p><strong>ChoreQuest is provided "as is" and "as available" without warranties of any kind, whether express or implied.</strong> To the fullest extent permitted by law, we disclaim all warranties, including but not limited to:</p>
+  <ul>
+    <li>Implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</li>
+    <li>Any warranty that the Service will be uninterrupted, error-free, or secure.</li>
+    <li>Any warranty regarding the accuracy or reliability of any information obtained through the Service.</li>
+  </ul>
+  <p>ChoreQuest is a free household tool. It is not a safety device, a professional child monitoring service, or a substitute for parental supervision. Do not rely solely on ChoreQuest's location features for safety-critical purposes.</p>
+
+  <h2>10. Limitation of Liability</h2>
+  <p><strong>To the maximum extent permitted by law, Scott Steinmetz and ChoreQuest shall not be liable for any indirect, incidental, special, consequential, or punitive damages</strong>, including but not limited to loss of data, loss of profits, or personal injury, arising out of or related to your use of the Service.</p>
+  <p>Because ChoreQuest is provided free of charge, our total cumulative liability for any claims arising from your use of the Service shall not exceed $0 (zero dollars).</p>
+
+  <h2>11. Account Termination</h2>
+
+  <h3>11.1 By You</h3>
+  <p>You may stop using ChoreQuest at any time. To delete your account and all associated data, contact us at <a href="mailto:admin@steinmetz.ltd">admin@steinmetz.ltd</a>. Account deletion is processed within 30 days.</p>
+
+  <h3>11.2 By Us</h3>
+  <p>We reserve the right to suspend or terminate accounts that:</p>
+  <ul>
+    <li>Violate these Terms of Service.</li>
+    <li>Are used for abusive, fraudulent, or illegal purposes.</li>
+    <li>Compromise the security or performance of the Service for other users.</li>
+  </ul>
+  <p>When possible, we will provide notice before termination. In cases of severe abuse or security threats, we may act immediately.</p>
+
+  <h2>12. Indemnification</h2>
+  <p>You agree to indemnify and hold harmless Scott Steinmetz from any claims, damages, losses, or expenses (including reasonable attorney's fees) arising from your use of the Service, your violation of these Terms, or your violation of any rights of another person.</p>
+
+  <h2>13. Governing Law</h2>
+  <p>These Terms are governed by and construed in accordance with the laws of the United States. Any disputes arising from these Terms or your use of the Service shall be resolved in the courts of the applicable jurisdiction.</p>
+
+  <h2>14. Changes to These Terms</h2>
+  <p>We may update these Terms from time to time. When we make changes:</p>
+  <ul>
+    <li>We will update the "Effective Date" at the top of this page.</li>
+    <li>For material changes, we will notify registered users by email.</li>
+    <li>Continued use of ChoreQuest after updated Terms take effect constitutes acceptance of the new Terms.</li>
+  </ul>
+  <p>If you do not agree with any changes, you may stop using the Service and request account deletion.</p>
+
+  <h2>15. Severability</h2>
+  <p>If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or removed to the minimum extent necessary, and the remaining provisions will remain in full force and effect.</p>
+
+  <h2>16. Entire Agreement</h2>
+  <p>These Terms, together with our <a href="/privacy">Privacy Policy</a>, constitute the entire agreement between you and ChoreQuest regarding your use of the Service.</p>
+
+  <h2>17. Contact Us</h2>
+  <p>If you have questions about these Terms of Service, contact us at:</p>
+  <p>
+    <strong>ChoreQuest</strong><br>
+    Operated by Scott Steinmetz<br>
+    Email: <a href="mailto:admin@steinmetz.ltd">admin@steinmetz.ltd</a>
+  </p>
+</div>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    &copy; 2026 ChoreQuest. All rights reserved. &nbsp;|&nbsp;
+    <a href="/privacy">Privacy Policy</a> &nbsp;|&nbsp;
+    <a href="/terms">Terms of Service</a> &nbsp;|&nbsp;
+    <a href="/welcome">Home</a>
+  </div>
+</footer>
+
+</body>
+</html>

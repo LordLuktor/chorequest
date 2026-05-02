@@ -15,6 +15,7 @@ gamificationRouter.get('/leaderboard', async (req, res) => {
       .join('household_members as m', 'ti.assigned_to', 'm.id')
       .where('ti.household_id', req.householdId)
       .where('ti.status', 'completed')
+      .whereNot('m.role', 'display')
       .select(
         'm.id as member_id',
         'm.name',

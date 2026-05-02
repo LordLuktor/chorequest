@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireParent } from '../middleware/auth';
 
 export const settingsRouter = Router();
 settingsRouter.use(requireAuth);
@@ -20,8 +20,8 @@ settingsRouter.get('/', async (req, res) => {
   }
 });
 
-// Update a setting
-settingsRouter.put('/:key', async (req, res) => {
+// Update a setting (parent only)
+settingsRouter.put('/:key', requireParent, async (req, res) => {
   try {
     const { key } = req.params;
     if (!key || key.length > 100) {

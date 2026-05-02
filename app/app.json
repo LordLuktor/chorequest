@@ -12,19 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#0f0e1a"
     },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.chorequest.app",
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ChoreQuest uses your location to show your family where you are on the family map.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "ChoreQuest uses background location to keep your family map updated.",
-        "UIBackgroundModes": [
-          "location"
-        ]
-      }
-    },
     "android": {
       "package": "com.chorequest.app",
+      "navigationBarColor": "#1a1830",
+      "backgroundColor": "#0f0e1a",
       "adaptiveIcon": {
         "backgroundColor": "#0f0e1a",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -42,6 +33,9 @@
         "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
+    "updates": {
+      "url": "https://u.expo.dev/207dba4b-11fa-42f6-9db4-28052c57251d"
+    },
     "runtimeVersion": "1.0.0",
     "web": {
       "favicon": "./assets/favicon.png",
@@ -57,7 +51,8 @@
           "locationAlwaysAndWhenInUsePermission": "ChoreQuest uses your location to show your family where you are.",
           "isAndroidBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},

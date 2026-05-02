@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loadTokens, saveTokens, clearTokens, authLogin, authSignup, authJoin, authMe, authLogout, getAccessToken, type AuthResult } from '../lib/api';
+import { loadTokens, saveTokens, clearTokens, authLogin, authSignup, authJoin, authPinLogin, authMe, authLogout, getAccessToken, type AuthResult } from '../lib/api';
 
 interface AuthUser {
   id: string;
@@ -19,6 +19,7 @@ interface AuthMember {
   name: string;
   role: string;
   avatarColor: string;
+  easyMode?: boolean;
 }
 
 interface AuthContextType {
@@ -28,6 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (identifier: string, password: string) => Promise<void>;
+  pinLogin: (householdId: string, pin: string) => Promise<void>;
   signup: (data: { email?: string; username?: string; password: string; displayName: string; householdName: string }) => Promise<void>;
   join: (data: { inviteCode: string; email?: string; username?: string; password: string; displayName: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -44,9 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleAuthResult = useCallback(async (result: AuthResult) => {
     await saveTokens(result.accessToken, result.refreshToken);
-    setUser(result.user);
-    setHousehold(result.household);
-    setMember({ id: result.member.id, name: result.user.displayName, role: result.member.role, avatarColor: '#3B82F6' });
+    // Fetch full user info (includes inviteCode for parents, avatarColor, etc.)
+    try {
+      const me = await authMe();
+      setUser(me.user);
+      setHousehold(me.household);
+      setMember(me.member);
+    } catch {
+      // Fallback to login response data
+      setUser(result.user);
+      setHousehold(result.household);
+      setMember({ id: result.member.id, name: result.user.displayName, role: result.member.role, avatarColor: '#3B82F6' });
+    }
   }, []);
 
   // Load tokens on mount and fetch user info
@@ -70,6 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (identifier: string, password: string) => {
     const result = await authLogin({ identifier, password });
+    await handleAuthResult(result);
+  }, [handleAuthResult]);
+
+  const pinLogin = useCallback(async (householdId: string, pin: string) => {
+    const result = await authPinLogin({ householdId, pin });
     await handleAuthResult(result);
   }, [handleAuthResult]);
 
@@ -110,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       user, household, member, isLoading,
       isAuthenticated: !!user,
-      login, signup, join, logout, refresh,
+      login, pinLogin, signup, join, logout, refresh,
     }}>
       {children}
     </AuthContext.Provider>

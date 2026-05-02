@@ -8,3 +8,4 @@ dist/
 *.tsbuildinfo
 app/dist/
 api/dist/
+backups/

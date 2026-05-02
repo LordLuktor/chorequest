@@ -77,6 +77,10 @@ export function useWebSocket() {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
     });
 
+    socket.on('shopping:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping'] });
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;

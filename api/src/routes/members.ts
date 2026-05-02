@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireParent } from '../middleware/auth';
 
 export const membersRouter = Router();
 membersRouter.use(requireAuth);
@@ -8,7 +8,11 @@ membersRouter.use(requireAuth);
 // List all members
 membersRouter.get('/', async (req, res) => {
   try {
-    const members = await db('household_members').where('household_id', req.householdId).orderBy('name');
+    const members = await db('household_members as hm')
+      .leftJoin('users as u', 'u.id', 'hm.user_id')
+      .where('hm.household_id', req.householdId)
+      .select('hm.*', 'u.email', 'u.username')
+      .orderBy('hm.name');
     res.json(members);
   } catch (err) {
     console.error('GET /members error:', err);
@@ -16,8 +20,8 @@ membersRouter.get('/', async (req, res) => {
   }
 });
 
-// Create member
-membersRouter.post('/', async (req, res) => {
+// Create member (parent only)
+membersRouter.post('/', requireParent, async (req, res) => {
   try {
     const { name, avatar_color } = req.body;
     if (!name || typeof name !== 'string' || name.trim().length === 0 || name.trim().length > 100) {
@@ -41,19 +45,22 @@ membersRouter.post('/', async (req, res) => {
   }
 });
 
-// Update member
-membersRouter.put('/:id', async (req, res) => {
+// Update member (parent only)
+membersRouter.put('/:id', requireParent, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ message: 'Invalid ID' }); return; }
 
-    const updates: Record<string, string> = {};
+    const updates: Record<string, any> = {};
     if (req.body.name && typeof req.body.name === 'string' && req.body.name.trim().length > 0) {
       updates.name = req.body.name.trim().slice(0, 100);
     }
     const colorRegex = /^#[0-9A-Fa-f]{6}$/;
     if (req.body.avatar_color && colorRegex.test(req.body.avatar_color)) {
       updates.avatar_color = req.body.avatar_color;
+    }
+    if (req.body.easy_mode !== undefined) {
+      updates.easy_mode = !!req.body.easy_mode;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -74,8 +81,8 @@ membersRouter.put('/:id', async (req, res) => {
   }
 });
 
-// Delete member
-membersRouter.delete('/:id', async (req, res) => {
+// Delete member (parent only)
+membersRouter.delete('/:id', requireParent, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ message: 'Invalid ID' }); return; }
