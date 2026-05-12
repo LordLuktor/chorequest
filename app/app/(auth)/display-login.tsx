@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth } from '../../providers/AuthProvider';
+import { getItem, setItem, removeItem } from '../../lib/storage';
 import { Monitor } from 'lucide-react-native';
 
 const C = {
@@ -11,31 +12,39 @@ const C = {
   success: '#22c55e', danger: '#ef4444',
 };
 
+const SAVED_CODE_KEY = 'displayHouseholdCode';
+
 export default function DisplayLoginScreen() {
   const [householdCode, setHouseholdCode] = useState('');
+  const [savedCode, setSavedCode] = useState<string | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const { pinLogin } = useAuth();
 
-  const handlePinPress = (digit: string) => {
-    if (pin.length < 4) {
-      setPin(prev => prev + digit);
-      setError('');
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      const stored = await getItem(SAVED_CODE_KEY);
+      if (stored) {
+        setSavedCode(stored);
+        setHouseholdCode(stored);
+      }
+      setHydrated(true);
+    })();
+  }, []);
 
   const handleBackspace = () => {
     setPin(prev => prev.slice(0, -1));
     setError('');
   };
 
-  const handleConnect = async () => {
-    if (!householdCode.trim() || pin.length !== 4) return;
-    setError('');
+  const submit = async (code: string, pinValue: string) => {
     setLoading(true);
     try {
-      await pinLogin(householdCode.trim(), pin);
+      await pinLogin(code, pinValue);
+      await setItem(SAVED_CODE_KEY, code);
+      setSavedCode(code);
     } catch (err: any) {
       setError(err.message || 'Invalid code or PIN');
       setPin('');
@@ -52,20 +61,21 @@ export default function DisplayLoginScreen() {
       setError('');
       if (newPin.length === 4 && householdCode.trim()) {
         // Small delay so the UI updates before the request
-        setTimeout(() => {
-          setLoading(true);
-          pinLogin(householdCode.trim(), newPin)
-            .catch((err: any) => {
-              setError(err.message || 'Invalid code or PIN');
-              setPin('');
-            })
-            .finally(() => setLoading(false));
-        }, 100);
+        setTimeout(() => submit(householdCode.trim(), newPin), 100);
       }
     }
   };
 
+  const handleForgetHousehold = async () => {
+    await removeItem(SAVED_CODE_KEY);
+    setSavedCode(null);
+    setHouseholdCode('');
+    setPin('');
+    setError('');
+  };
+
   const pinDots = Array.from({ length: 4 }, (_, i) => i < pin.length);
+  const hasSavedCode = !!savedCode;
 
   return (
     <KeyboardAvoidingView
@@ -88,35 +98,42 @@ export default function DisplayLoginScreen() {
                 Display Mode
               </Text>
               <Text style={{ fontSize: 14, color: C.muted, marginTop: 8, textAlign: 'center' }}>
-                Connect a shared screen to your household
+                {hasSavedCode
+                  ? 'Enter your PIN to unlock the display'
+                  : 'Connect a shared screen to your household'}
               </Text>
             </View>
 
-            {/* Household Code Input */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ fontSize: 14, color: C.muted, marginBottom: 6 }}>Household Code</Text>
-              <TextInput
-                style={{
-                  backgroundColor: C.card,
-                  borderWidth: 1,
-                  borderColor: C.border,
-                  borderRadius: 12,
-                  color: C.text,
-                  fontSize: 20,
-                  padding: 14,
-                  textAlign: 'center',
-                  letterSpacing: 4,
-                  fontWeight: '600',
-                }}
-                value={householdCode}
-                onChangeText={setHouseholdCode}
-                placeholder="Invite code"
-                placeholderTextColor={C.dim}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={20}
-              />
-            </View>
+            {/* Household Code Input — hidden once paired */}
+            {hydrated && !hasSavedCode && (
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 14, color: C.muted, marginBottom: 6 }}>Household Code</Text>
+                <TextInput
+                  style={{
+                    backgroundColor: C.card,
+                    borderWidth: 1,
+                    borderColor: C.border,
+                    borderRadius: 12,
+                    color: C.text,
+                    fontSize: 20,
+                    padding: 14,
+                    textAlign: 'center',
+                    letterSpacing: 4,
+                    fontWeight: '600',
+                  }}
+                  value={householdCode}
+                  onChangeText={setHouseholdCode}
+                  placeholder="Invite code"
+                  placeholderTextColor={C.dim}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={20}
+                />
+                <Text style={{ fontSize: 12, color: C.dim, marginTop: 6, textAlign: 'center' }}>
+                  You'll only need to enter this once on this device.
+                </Text>
+              </View>
+            )}
 
             {/* PIN Display */}
             <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -205,8 +222,19 @@ export default function DisplayLoginScreen() {
               </View>
             )}
 
+            {/* Switch household (only when paired) */}
+            {hasSavedCode && (
+              <View style={{ marginTop: 24, alignItems: 'center' }}>
+                <Pressable onPress={handleForgetHousehold}>
+                  <Text style={{ color: C.muted, fontSize: 13 }}>
+                    Use a <Text style={{ color: C.primaryLight }}>different household</Text>
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
             {/* Back link */}
-            <View style={{ marginTop: 32, alignItems: 'center' }}>
+            <View style={{ marginTop: 24, alignItems: 'center' }}>
               <Link href="/(auth)/login" asChild>
                 <Pressable>
                   <Text style={{ color: C.muted, fontSize: 14 }}>
