@@ -12,6 +12,7 @@ COPY docker/frontend/nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY landing/ /usr/share/nginx/landing
 COPY downloads/ /usr/share/nginx/downloads
+RUN chmod 755 /usr/share/nginx/downloads && chmod 644 /usr/share/nginx/downloads/*
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -qO- http://localhost/health || exit 1

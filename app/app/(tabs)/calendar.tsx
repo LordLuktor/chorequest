@@ -8,7 +8,8 @@ import {
   format, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   isSameMonth, isSameDay, isToday, addMonths, subMonths, addWeeks, subWeeks,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Check, SkipForward, Undo2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Check, SkipForward } from 'lucide-react-native';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -23,6 +24,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function CalendarScreen() {
   const { member } = useAuth();
   const queryClient = useQueryClient();
+  const tabBarPadding = useTabBarPadding();
   const [view, setView] = useState<CalendarView>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -282,7 +284,7 @@ export default function CalendarScreen() {
 
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: tabBarPadding }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
         >
           {selectedTasks.length === 0 ? (
@@ -374,19 +376,14 @@ function TaskCard({ task, onComplete, onSkip, onUndo }: {
           </Pressable>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{
-            paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99,
-            backgroundColor: isDone ? '#22c55e20' : '#64748b20',
-          }}>
-            <Text style={{ fontSize: 12, color: isDone ? C.success : '#64748b' }}>
-              {isDone ? 'Done' : 'Skipped'}
-            </Text>
-          </View>
-          <Pressable onPress={onUndo} style={{ padding: 8, borderRadius: 8 }}>
-            <Undo2 size={14} color="#64748b" />
-          </Pressable>
-        </View>
+        <Pressable onPress={onUndo} style={{
+          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99,
+          backgroundColor: isDone ? '#22c55e20' : '#64748b20',
+        }}>
+          <Text style={{ fontSize: 12, color: isDone ? C.success : '#64748b' }}>
+            {isDone ? 'Done · tap to undo' : 'Skipped · tap to undo'}
+          </Text>
+        </Pressable>
       )}
     </View>
   );

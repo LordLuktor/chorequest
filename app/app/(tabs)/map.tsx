@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo } from 'react';
 import { ShoppingCart, RefreshCw, Plus, Trash2, Square, CheckSquare } from 'lucide-react-native';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 type ListRow = ShoppingItem | { _type: 'divider' };
 
@@ -31,6 +32,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function ShoppingScreen() {
+  const tabBarPadding = useTabBarPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [newItemText, setNewItemText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('General');
@@ -389,7 +391,7 @@ export default function ShoppingScreen() {
                 tintColor={C.primaryLight}
               />
             }
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: tabBarPadding }}
           />
         )}
       </View>

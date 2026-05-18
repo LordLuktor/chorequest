@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback } from 'react';
 import { Plus, Pencil, Pause, Play, Trash2, RefreshCw } from 'lucide-react-native';
 import TaskFormModal from '../../components/TaskFormModal';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -16,6 +17,7 @@ const C = {
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function TasksScreen() {
+  const tabBarPadding = useTabBarPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | undefined>(undefined);
@@ -75,6 +77,7 @@ export default function TasksScreen() {
 
         <ScrollView
           style={{ flex: 1, paddingHorizontal: 20 }}
+          contentContainerStyle={{ paddingBottom: tabBarPadding }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
         >
           {templates.length === 0 ? (
@@ -111,7 +114,6 @@ export default function TasksScreen() {
               )}
             </>
           )}
-          <View style={{ height: 32 }} />
         </ScrollView>
       </View>
 

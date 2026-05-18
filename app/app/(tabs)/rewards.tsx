@@ -10,6 +10,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback } from 'react';
 import { Gift, Plus, Edit3, Trash2, RefreshCw, Check, X, ShoppingBag, Clock, Star, Lightbulb, MessageSquare } from 'lucide-react-native';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -32,6 +33,7 @@ const emptyForm: RewardFormData = { title: '', description: '', icon: '🎁', co
 export default function RewardsScreen() {
   const { member } = useAuth();
   const queryClient = useQueryClient();
+  const tabBarPadding = useTabBarPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
@@ -249,7 +251,7 @@ export default function RewardsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20,  }}
+        contentContainerStyle={{ padding: 20, paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
       >
         {/* Header */}

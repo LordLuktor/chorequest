@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { DollarSign, ArrowUpRight, ArrowDownRight, Minus, RefreshCw } from 'lucide-react-native';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -15,6 +16,7 @@ const C = {
 
 export default function AllowanceScreen() {
   const queryClient = useQueryClient();
+  const tabBarPadding = useTabBarPadding();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: settings } = useQuery({ queryKey: ['allowanceSettings'], queryFn: getAllowanceSettings });
@@ -38,7 +40,7 @@ export default function AllowanceScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

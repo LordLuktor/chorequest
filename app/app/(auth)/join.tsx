@@ -1,10 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../providers/AuthProvider';
 
 export default function JoinScreen() {
+  const params = useLocalSearchParams<{ code?: string }>();
   const [inviteCode, setInviteCode] = useState('');
+
+  useEffect(() => {
+    if (params.code && !inviteCode) {
+      setInviteCode(params.code.toUpperCase().trim());
+    }
+  }, [params.code]);
+
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');

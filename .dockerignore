@@ -12,4 +12,3 @@ api/dist
 *.log
 .DS_Store
 .expo
-downloads/*.apk

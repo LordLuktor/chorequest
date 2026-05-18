@@ -127,6 +127,11 @@ tasksRouter.post('/:id/complete', async (req, res) => {
         await db('household_members')
           .where({ id: pointsRecipient })
           .increment('points_total', bonusDailyCompletion);
+        // Fold bonus into this task's points_awarded so undo reverses it
+        await db('task_instances')
+          .where({ id })
+          .increment('points_awarded', bonusDailyCompletion);
+        pointsAwarded += bonusDailyCompletion;
       }
     }
 
@@ -184,7 +189,7 @@ tasksRouter.post('/:id/skip', async (req, res) => {
   }
 });
 
-// Undo complete or skip (within 30 seconds)
+// Undo complete or skip
 tasksRouter.post('/:id/undo', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -196,20 +201,13 @@ tasksRouter.post('/:id/undo', async (req, res) => {
     if (!task) { res.status(404).json({ message: 'Task not found' }); return; }
     if (task.status === 'pending') { res.status(400).json({ message: 'Task is already pending' }); return; }
 
-    // Check 30-second window
-    const actionTime = task.status === 'completed' ? task.completed_at : task.created_at;
-    const elapsed = Date.now() - new Date(actionTime).getTime();
-    if (elapsed > 30000) {
-      res.status(400).json({ message: 'Undo window has expired (30 seconds)' });
-      return;
-    }
-
     const wasCompleted = task.status === 'completed';
 
-    // Reverse points if it was completed
-    if (wasCompleted && task.points_awarded > 0 && task.completed_by) {
+    // Reverse points to whoever was awarded them (assignee, falling back to whoever completed it)
+    const pointsRecipient = task.assigned_to || task.completed_by;
+    if (wasCompleted && task.points_awarded > 0 && pointsRecipient) {
       await db('household_members')
-        .where({ id: task.completed_by })
+        .where({ id: pointsRecipient })
         .decrement('points_total', task.points_awarded);
     }
 

@@ -10,6 +10,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useMemo } from 'react';
 import { Trophy, Flame, Sunrise, Target, RefreshCw, BarChart3 } from 'lucide-react-native';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -23,6 +24,7 @@ type Period = 'week' | 'month' | 'all';
 export default function ScoresScreen() {
   const { member } = useAuth();
   const queryClient = useQueryClient();
+  const tabBarPadding = useTabBarPadding();
   const [period, setPeriod] = useState<Period>('all');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -99,7 +101,7 @@ export default function ScoresScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

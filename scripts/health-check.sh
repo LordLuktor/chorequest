@@ -59,7 +59,7 @@ check_redis() {
         return
     fi
     local pong
-    pong="$(docker exec "${container_id}" redis-cli PING 2>/dev/null)"
+    pong="$(docker exec "${container_id}" sh -c 'redis-cli -a "$(cat /run/secrets/chorequest_redis_password)" PING 2>/dev/null' 2>/dev/null)"
     if [ "${pong}" != "PONG" ]; then
         FAILURES+=("Redis not responding to PING (got: '${pong}')")
     fi

@@ -5,9 +5,10 @@ import { useAuth } from '../../providers/AuthProvider';
 import { format } from 'date-fns';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback } from 'react';
-import { Check, SkipForward, Undo2, Flame, Star, CheckCircle, RefreshCw, ShieldAlert, MapPin, Send } from 'lucide-react-native';
+import { Check, SkipForward, Flame, Star, CheckCircle, RefreshCw, ShieldAlert, MapPin, Send } from 'lucide-react-native';
 import { format as formatDate } from 'date-fns';
 import { EasyModeView } from '../../components/EasyModeView';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
 
 const C = {
   bg: '#0f0e1a', card: '#1a1830', border: '#312e5a', surface3: '#252244',
@@ -20,6 +21,7 @@ export default function DashboardScreen() {
   const { member, household } = useAuth();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const tabBarPadding = useTabBarPadding();
   const today = format(new Date(), 'yyyy-MM-dd');
   const isDisplay = member?.role === 'display';
 
@@ -150,7 +152,7 @@ export default function DashboardScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryLight} />}
       >
         {/* Header */}
@@ -429,14 +431,9 @@ function TaskRow({ task, onComplete, onSkip, onUndo }: { task: TaskInstance; onC
           </Pressable>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 99, backgroundColor: isDone ? '#22c55e20' : '#64748b20' }}>
-            <Text style={{ fontSize: 12, color: isDone ? C.success : '#64748b' }}>{isDone ? 'Done' : 'Skipped'}</Text>
-          </View>
-          <Pressable onPress={onUndo} style={{ padding: 8, borderRadius: 8 }}>
-            <Undo2 size={14} color="#64748b" />
-          </Pressable>
-        </View>
+        <Pressable onPress={onUndo} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99, backgroundColor: isDone ? '#22c55e20' : '#64748b20' }}>
+          <Text style={{ fontSize: 12, color: isDone ? C.success : '#64748b' }}>{isDone ? 'Done · tap to undo' : 'Skipped · tap to undo'}</Text>
+        </Pressable>
       )}
     </View>
   );

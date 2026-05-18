@@ -1,17 +1,26 @@
-import { View, Text, Pressable, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, Alert, Share, Platform } from 'react-native';
 import { Toggle } from '../../components/Toggle';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../providers/AuthProvider';
 import { useTheme, type ThemeMode } from '../../providers/ThemeProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMembers, getAllowanceSettings, updateAllowanceSettings, resetMemberPassword, updateMemberEmail, deleteMember, updateMember, setUserPin, getSOSAlerts, resolveSOS, requestCheckin, getCheckins, exportUserData, deleteAccount, authCreateDisplay, resetDisplayPin, type Member, type SOSAlert, type CheckinRequest } from '../../lib/api';
-import { LogOut, Copy, KeyRound, Mail, Trash2, Sun, Moon, Monitor, ShieldAlert, MapPin, CheckCircle2, Send, Clock, Download, AlertTriangle, Plus, Eye, EyeOff } from 'lucide-react-native';
+import { APP_PUBLIC_URL } from '../../lib/constants';
+import { useTabBarPadding } from '../../hooks/useTabBarPadding';
+import { LogOut, Copy, KeyRound, Mail, Trash2, Sun, Moon, Monitor, ShieldAlert, MapPin, CheckCircle2, Send, Clock, Download, AlertTriangle, Plus, Eye, EyeOff, Share2 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import { useState, useEffect } from 'react';
+
+const APP_VERSION = (Constants.expoConfig?.version || '0.0.0') as string;
+const UPDATE_ID = Updates.updateId ? Updates.updateId.slice(0, 8) : 'embedded';
+const RUNTIME = (Constants.expoConfig?.runtimeVersion as string | undefined) || '—';
 
 export default function SettingsScreen() {
   const { user, household, member, logout } = useAuth();
   const { colors, mode, setTheme } = useTheme();
+  const tabBarPadding = useTabBarPadding();
   const C = { ...colors, muted: colors.textMuted, dim: colors.textDim };
   const queryClient = useQueryClient();
   const { data: members = [] } = useQuery({ queryKey: ['members'], queryFn: getMembers });
@@ -131,6 +140,42 @@ export default function SettingsScreen() {
       } catch {
         // Clipboard may not be available on all platforms
       }
+    }
+  };
+
+  const [linkShared, setLinkShared] = useState(false);
+  const inviteLink = household?.inviteCode
+    ? `${APP_PUBLIC_URL}/join?code=${encodeURIComponent(household.inviteCode)}`
+    : '';
+  const shareMessage = household?.inviteCode
+    ? `Join our family "${household.name}" on ChoreQuest! Tap to join: ${inviteLink}`
+    : '';
+
+  const handleShareInvite = async () => {
+    if (!household?.inviteCode) return;
+    try {
+      if (Platform.OS === 'web') {
+        const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+        if (nav?.share) {
+          await nav.share({
+            title: 'Join my family on ChoreQuest',
+            text: shareMessage,
+            url: inviteLink,
+          });
+          return;
+        }
+        await Clipboard.setStringAsync(shareMessage);
+        setLinkShared(true);
+        setTimeout(() => setLinkShared(false), 2000);
+        return;
+      }
+      await Share.share({
+        message: shareMessage,
+        url: inviteLink,
+        title: 'Join my family on ChoreQuest',
+      });
+    } catch {
+      // User cancelled or share unavailable — ignore
     }
   };
 
@@ -283,7 +328,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
       <View style={{ flex: 1 }}>
-        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }}>
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} contentContainerStyle={{ paddingBottom: tabBarPadding }}>
           <Text style={{ fontSize: 18, fontWeight: '600', color: C.text, marginTop: 16, marginBottom: 24 }}>
             Settings
           </Text>
@@ -323,19 +368,36 @@ export default function SettingsScreen() {
 
             {/* Invite code (parents only) */}
             {household?.inviteCode && member?.role === 'parent' && (
-              <Pressable
-                style={{ padding: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(49,46,90,0.5)' }}
-                onPress={copyInviteCode}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: C.muted }}>Invite Code</Text>
-                  <Text style={{ color: C.text, fontFamily: 'monospace', fontSize: 18, letterSpacing: 4, marginTop: 2 }}>
-                    {household.inviteCode}
-                  </Text>
-                </View>
-                <Copy size={18} color={copiedCode ? C.success : C.muted} />
-                {copiedCode && <Text style={{ fontSize: 12, color: C.success, marginLeft: 8 }}>Copied!</Text>}
-              </Pressable>
+              <>
+                <Pressable
+                  style={{ padding: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(49,46,90,0.5)' }}
+                  onPress={copyInviteCode}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: C.muted }}>Invite Code</Text>
+                    <Text style={{ color: C.text, fontFamily: 'monospace', fontSize: 18, letterSpacing: 4, marginTop: 2 }}>
+                      {household.inviteCode}
+                    </Text>
+                  </View>
+                  <Copy size={18} color={copiedCode ? C.success : C.muted} />
+                  {copiedCode && <Text style={{ fontSize: 12, color: C.success, marginLeft: 8 }}>Copied!</Text>}
+                </Pressable>
+
+                <Pressable
+                  style={{ padding: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(49,46,90,0.5)' }}
+                  onPress={handleShareInvite}
+                >
+                  <Share2 size={18} color={C.primaryLight} style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: C.text, fontWeight: '500', fontSize: 14 }}>
+                      {linkShared ? 'Link copied to clipboard!' : 'Share invite link'}
+                    </Text>
+                    <Text style={{ color: C.dim, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                      Auto-links new members to your family
+                    </Text>
+                  </View>
+                </Pressable>
+              </>
             )}
 
             {/* Member list */}
@@ -1026,14 +1088,18 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, overflow: 'hidden', marginBottom: 32 }}>
+          <View style={{ backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
             <Pressable style={{ padding: 16, flexDirection: 'row', alignItems: 'center' }} onPress={handleLogout}>
               <LogOut size={18} color={C.danger} />
               <Text style={{ color: C.danger, fontSize: 14, fontWeight: '500', marginLeft: 12 }}>Log Out</Text>
             </Pressable>
           </View>
 
-          <View style={{ height: 32 }} />
+          <View style={{ alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ fontSize: 11, color: C.dim }}>
+              ChoreQuest v{APP_VERSION} · runtime {RUNTIME} · build {UPDATE_ID}
+            </Text>
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>

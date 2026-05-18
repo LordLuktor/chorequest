@@ -8,6 +8,8 @@ export const API_BASE = Platform.select({
   default: __DEV__ ? 'http://192.168.1.100:4000/api/v1' : 'https://chores.steinmetz.ltd/api/v1',
 }) as string;
 
+export const APP_PUBLIC_URL = 'https://chores.steinmetz.ltd';
+
 export const COLORS = {
   primary: '#6366f1',
   primaryLight: '#818cf8',
