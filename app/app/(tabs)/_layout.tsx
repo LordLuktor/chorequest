@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { Home, Calendar, ListChecks, ShoppingCart, Settings, Trophy, DollarSign, Gift } from 'lucide-react-native';
+import { Home, Calendar, ListChecks, ShoppingCart, Settings, Trophy, DollarSign, Gift, MapPin } from 'lucide-react-native';
 import { getAllowanceSettings } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
 import { COLORS } from '../../lib/constants';
@@ -22,6 +22,7 @@ export default function TabsLayout() {
   const isPointsEconomy = allowanceSettings?.reward_mode === 'points_economy';
   const isEasyMode = member?.easyMode && member?.role !== 'parent';
   const isSimplified = isDisplay || isEasyMode;
+  const isParent = member?.role === 'parent';
 
   return (
     <Tabs
@@ -90,11 +91,19 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="map"
+        name="shopping"
         options={{
           title: 'Shopping',
           tabBarIcon: ({ color, size }) => <ShoppingCart size={size - 2} color={color} />,
-          href: isSimplified ? null : '/map',
+          href: isSimplified ? null : '/shopping',
+        }}
+      />
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color, size }) => <MapPin size={size - 2} color={color} />,
+          href: (isSimplified || !isParent) ? null : '/map',
         }}
       />
       <Tabs.Screen

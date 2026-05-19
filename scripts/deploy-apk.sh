@@ -2,8 +2,8 @@
 # Check for completed EAS build, download APK, and deploy
 cd /home/scottstein/workspace/chorequest
 
-# Get the latest Android build
-BUILD_INFO=$(eas build:list --platform android --status finished --limit 1 --non-interactive --json 2>/dev/null)
+# Get the latest Android build (eas needs the project dir for build:list)
+BUILD_INFO=$(cd app && eas build:list --platform android --status finished --limit 1 --non-interactive --json 2>/dev/null)
 if [ $? -ne 0 ]; then
   echo "$(date): Failed to fetch build list"
   exit 1

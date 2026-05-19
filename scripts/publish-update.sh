@@ -16,4 +16,4 @@ fi
 
 cd "$(dirname "$0")/../app"
 echo "Publishing OTA update to channel: production"
-eas update --channel production --message "$MESSAGE" --non-interactive
+eas update --channel production --environment production --message "$MESSAGE" --non-interactive
