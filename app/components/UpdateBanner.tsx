@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Download, X } from 'lucide-react-native';
 import { APP_PUBLIC_URL } from '../lib/constants';
 
@@ -63,7 +64,7 @@ export function UpdateBanner() {
     : `${APP_PUBLIC_URL}${manifest.apkUrl}`;
 
   return (
-    <View style={{
+    <SafeAreaView edges={['top']} style={{
       paddingHorizontal: 14, paddingVertical: 10,
       backgroundColor: '#4338ca',
       flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -86,6 +87,6 @@ export function UpdateBanner() {
       <Pressable onPress={() => setDismissed(true)} style={{ padding: 4 }}>
         <X size={14} color="rgba(255,255,255,0.8)" />
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
