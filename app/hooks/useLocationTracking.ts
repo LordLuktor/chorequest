@@ -2,18 +2,41 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Platform, AppState, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reportLocation, getAccessToken } from '../lib/api';
 import { API_BASE } from '../lib/constants';
+import { useAuth } from '../providers/AuthProvider';
 
 const BACKGROUND_LOCATION_TASK = 'background-location-task';
-const UPDATE_INTERVAL_MS = 60_000;
 
-// Register background task at module level
+// Cadence tiers (ms)
+const INTERVAL_DEFAULT = 5 * 60 * 1000;   // 5 min — battery friendly
+const INTERVAL_SOS = 30 * 1000;            // 30s during active SOS
+const INTERVAL_SOS_FAST = 5 * 1000;        // 5s during SOS while moving fast
+
+// 15 mph ≈ 6.7 m/s (coords.speed is m/s)
+const FAST_SPEED_M_S = 6.7;
+
+// AsyncStorage keys used to communicate between the background task and the hook
+const KEY_CURRENT_MODE = 'cq.tracking.mode';
+const KEY_LAST_SPEED = 'cq.tracking.lastSpeed';
+const KEY_LAST_SPEED_AT = 'cq.tracking.lastSpeedAt';
+
+type Mode = 'default' | 'sos' | 'sos_fast';
+
+function intervalForMode(m: Mode): number {
+  if (m === 'sos_fast') return INTERVAL_SOS_FAST;
+  if (m === 'sos') return INTERVAL_SOS;
+  return INTERVAL_DEFAULT;
+}
+
+// Background task: post location, record speed, let the hook decide whether to escalate
 try {
   TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) => {
     if (error) return;
     if (data?.locations?.length > 0) {
-      const { latitude, longitude, accuracy } = data.locations[0].coords;
+      const sample = data.locations[0].coords;
+      const { latitude, longitude, accuracy, speed } = sample;
       const token = getAccessToken();
       if (!token) return;
       const base = Platform.OS === 'web' ? '/api/v1' : API_BASE;
@@ -22,14 +45,98 @@ try {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ latitude, longitude, accuracy }),
       }).catch(() => {});
+      try {
+        if (typeof speed === 'number' && speed >= 0) {
+          await AsyncStorage.setItem(KEY_LAST_SPEED, String(speed));
+          await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+        }
+      } catch {}
     }
   });
 } catch {
-  // Task manager not available
+  // Task manager not available (web)
+}
+
+async function checkMyActiveSOS(memberId: number | undefined): Promise<boolean> {
+  if (!memberId) return false;
+  const token = getAccessToken();
+  if (!token) return false;
+  try {
+    const base = Platform.OS === 'web' ? '/api/v1' : API_BASE;
+    const r = await fetch(`${base}/safety/sos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return false;
+    const alerts = await r.json() as Array<{ member_id: number; is_resolved: boolean }>;
+    return alerts.some(a => a.member_id === memberId && !a.is_resolved);
+  } catch {
+    return false;
+  }
+}
+
+async function startBackgroundTrackingAt(intervalMs: number) {
+  try {
+    const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
+    if (isStarted) {
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
+    }
+    await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+      accuracy: intervalMs <= INTERVAL_SOS_FAST ? Location.Accuracy.High : Location.Accuracy.Balanced,
+      timeInterval: intervalMs,
+      distanceInterval: intervalMs <= INTERVAL_SOS ? 0 : 50,
+      deferredUpdatesInterval: intervalMs,
+      showsBackgroundLocationIndicator: false,
+      foregroundService: {
+        notificationTitle: 'ChoreQuest',
+        notificationBody: intervalMs <= INTERVAL_SOS ? 'SOS active — sharing live location' : 'Sharing your location with family',
+        notificationColor: '#6366f1',
+      },
+    });
+  } catch (err) {
+    console.warn('Failed to start background location:', err);
+  }
 }
 
 export function useLocationTracking(isAuthenticated: boolean) {
+  const { member } = useAuth();
+  const memberIdRef = useRef<number | undefined>(undefined);
+  memberIdRef.current = member?.id;
+
   const foregroundIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const modeRef = useRef<Mode>('default');
+  const sosPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const applyMode = useCallback(async (next: Mode) => {
+    if (modeRef.current === next) return;
+    modeRef.current = next;
+    try { await AsyncStorage.setItem(KEY_CURRENT_MODE, next); } catch {}
+    if (Platform.OS !== 'web') {
+      const ms = intervalForMode(next);
+      await startBackgroundTrackingAt(ms);
+    }
+  }, []);
+
+  // Recompute target mode from SOS state + last speed reading
+  const recomputeMode = useCallback(async () => {
+    const sosActive = await checkMyActiveSOS(memberIdRef.current);
+    if (!sosActive) {
+      await applyMode('default');
+      return;
+    }
+    // SOS active — decide between sos and sos_fast based on recent speed
+    let isFast = false;
+    try {
+      const [s, t] = await Promise.all([
+        AsyncStorage.getItem(KEY_LAST_SPEED),
+        AsyncStorage.getItem(KEY_LAST_SPEED_AT),
+      ]);
+      const speed = s ? parseFloat(s) : 0;
+      const at = t ? parseInt(t, 10) : 0;
+      // Only trust speed readings from the last 2 minutes
+      isFast = speed > FAST_SPEED_M_S && Date.now() - at < 120_000;
+    } catch {}
+    await applyMode(isFast ? 'sos_fast' : 'sos');
+  }, [applyMode]);
 
   const requestAndStart = useCallback(async () => {
     if (!isAuthenticated || Platform.OS === 'web') return;
@@ -40,7 +147,7 @@ export function useLocationTracking(isAuthenticated: boolean) {
       if (fgStatus !== 'granted') return;
     }
 
-    // Send initial location
+    // Send initial location immediately
     try {
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       await reportLocation({
@@ -48,6 +155,12 @@ export function useLocationTracking(isAuthenticated: boolean) {
         longitude: loc.coords.longitude,
         accuracy: loc.coords.accuracy ?? undefined,
       });
+      if (typeof loc.coords.speed === 'number' && loc.coords.speed >= 0) {
+        try {
+          await AsyncStorage.setItem(KEY_LAST_SPEED, String(loc.coords.speed));
+          await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+        } catch {}
+      }
     } catch {}
 
     if (Platform.OS === 'android') {
@@ -64,18 +177,20 @@ export function useLocationTracking(isAuthenticated: boolean) {
 
         const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
         if (bgStatus === 'granted') {
-          await startBackgroundTracking();
+          await applyMode('default');
+          recomputeMode();
           return;
         }
       } else {
-        await startBackgroundTracking();
+        await applyMode('default');
+        recomputeMode();
         return;
       }
     }
 
-    // Fallback: foreground polling
+    // Fallback: foreground polling at current target interval
     if (!foregroundIntervalRef.current) {
-      foregroundIntervalRef.current = setInterval(async () => {
+      const tick = async () => {
         if (AppState.currentState !== 'active') return;
         try {
           const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -84,17 +199,41 @@ export function useLocationTracking(isAuthenticated: boolean) {
             longitude: loc.coords.longitude,
             accuracy: loc.coords.accuracy ?? undefined,
           });
+          if (typeof loc.coords.speed === 'number' && loc.coords.speed >= 0) {
+            try {
+              await AsyncStorage.setItem(KEY_LAST_SPEED, String(loc.coords.speed));
+              await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+            } catch {}
+          }
         } catch {}
-      }, UPDATE_INTERVAL_MS);
+      };
+      // Use a short heartbeat that compares against modeRef-derived interval
+      let lastFired = 0;
+      foregroundIntervalRef.current = setInterval(async () => {
+        const target = intervalForMode(modeRef.current);
+        if (Date.now() - lastFired >= target) {
+          lastFired = Date.now();
+          await tick();
+        }
+      }, 1000);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, applyMode, recomputeMode]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
+    if (!isAuthenticated) return;
+
     requestAndStart();
 
+    // Poll SOS state every 30s so we can up/down-shift cadence promptly when an
+    // alert is raised or resolved. recomputeMode also reads recent speed.
+    sosPollRef.current = setInterval(() => { recomputeMode(); }, 30_000);
+
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') requestAndStart();
+      if (state === 'active') {
+        requestAndStart();
+        recomputeMode();
+      }
     });
 
     return () => {
@@ -103,28 +242,10 @@ export function useLocationTracking(isAuthenticated: boolean) {
         clearInterval(foregroundIntervalRef.current);
         foregroundIntervalRef.current = null;
       }
+      if (sosPollRef.current) {
+        clearInterval(sosPollRef.current);
+        sosPollRef.current = null;
+      }
     };
-  }, [requestAndStart]);
-}
-
-async function startBackgroundTracking() {
-  try {
-    const isStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => false);
-    if (!isStarted) {
-      await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: UPDATE_INTERVAL_MS,
-        distanceInterval: 50,
-        deferredUpdatesInterval: UPDATE_INTERVAL_MS,
-        showsBackgroundLocationIndicator: false,
-        foregroundService: {
-          notificationTitle: 'ChoreQuest',
-          notificationBody: 'Sharing your location with family',
-          notificationColor: '#6366f1',
-        },
-      });
-    }
-  } catch (err) {
-    console.warn('Failed to start background location:', err);
-  }
+  }, [isAuthenticated, requestAndStart, recomputeMode]);
 }

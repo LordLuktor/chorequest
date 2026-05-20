@@ -8,6 +8,7 @@ import { QueryProvider, queryClient } from '../providers/QueryProvider';
 import { ThemeProvider, useTheme } from '../providers/ThemeProvider';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useLocationTracking } from '../hooks/useLocationTracking';
+import { UpdateBanner } from '../components/UpdateBanner';
 import * as Updates from 'expo-updates';
 
 function useOTAUpdates() {
@@ -68,7 +69,12 @@ function AuthGate() {
     );
   }
 
-  return <Slot />;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <UpdateBanner />
+      <Slot />
+    </View>
+  );
 }
 
 function ThemedStatusBar() {

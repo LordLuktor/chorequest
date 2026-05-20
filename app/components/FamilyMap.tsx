@@ -1,5 +1,6 @@
-import { View, Platform, Linking, Pressable, Text } from 'react-native';
+import { View, Platform } from 'react-native';
 import { useMemo } from 'react';
+import { WebView } from 'react-native-webview';
 import type { MemberLocation, Member } from '../lib/api';
 
 interface FamilyMapProps {
@@ -23,8 +24,8 @@ function buildMapHTML(locations: MemberLocation[], members: Member[], focusMembe
   const markers = locations.map(l => {
     const m = members.find(mb => mb.id === l.member_id);
     const color = m?.avatar_color || '#6366f1';
-    const name = l.member_name;
-    const initial = name.charAt(0).toUpperCase();
+    const name = l.member_name.replace(/'/g, "\\'");
+    const initial = l.member_name.charAt(0).toUpperCase();
     const time = new Date(l.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     const accuracy = l.accuracy ? ` (±${Math.round(l.accuracy)}m)` : '';
 
@@ -47,7 +48,7 @@ function buildMapHTML(locations: MemberLocation[], members: Member[], focusMembe
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { margin: 0; padding: 0; }
-  html, body, #map { width: 100%; height: 100%; }
+  html, body, #map { width: 100%; height: 100%; background: #0f0e1a; }
   .leaflet-popup-content-wrapper { border-radius: 8px; }
   .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; }
 </style>
@@ -87,38 +88,19 @@ export function FamilyMap({ locations, members, height = 300, fill = false, focu
     );
   }
 
-  // Native Android: show member legend + open in Google Maps
-  // (In-app map requires WebView which needs a new APK build)
+  // Native (iOS/Android): WebView rendering the same Leaflet HTML
   return (
-    <View style={{ ...(fill ? { flex: 1 } : {}), borderRadius: fill ? 0 : 12, backgroundColor: '#1a1830', borderWidth: 1, borderColor: '#312e5a', padding: 12 }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        {locations.map(l => {
-          const m = members.find(mb => mb.id === l.member_id);
-          const time = new Date(l.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          return (
-            <Pressable
-              key={l.member_id}
-              onPress={() => Linking.openURL(`https://www.google.com/maps?q=${l.latitude},${l.longitude}`)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#252244', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
-            >
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: m?.avatar_color || '#6366f1' }} />
-              <Text style={{ fontSize: 12, color: '#e0e7ff' }}>{l.member_name}</Text>
-              <Text style={{ fontSize: 10, color: '#5c6278' }}>{time}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      {locations.length > 1 && (
-        <Pressable
-          onPress={() => {
-            const points = locations.map(l => `${l.latitude},${l.longitude}`);
-            Linking.openURL(`https://www.google.com/maps/dir/${points.join('/')}`);
-          }}
-          style={{ alignItems: 'center', paddingVertical: 8, borderRadius: 8, backgroundColor: '#252244' }}
-        >
-          <Text style={{ color: '#818cf8', fontSize: 13, fontWeight: '500' }}>View All on Map</Text>
-        </Pressable>
-      )}
+    <View style={{ ...sizeStyle, overflow: 'hidden', borderWidth: 1, borderColor: '#312e5a' }}>
+      <WebView
+        originWhitelist={['*']}
+        source={{ html }}
+        style={{ flex: 1, backgroundColor: '#0f0e1a' }}
+        javaScriptEnabled
+        domStorageEnabled
+        scalesPageToFit
+        androidLayerType="hardware"
+        setSupportMultipleWindows={false}
+      />
     </View>
   );
 }

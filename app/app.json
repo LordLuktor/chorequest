@@ -2,7 +2,7 @@
   "expo": {
     "name": "ChoreQuest",
     "slug": "chorequest",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -36,7 +36,7 @@
     "updates": {
       "url": "https://u.expo.dev/207dba4b-11fa-42f6-9db4-28052c57251d"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.1.0",
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
