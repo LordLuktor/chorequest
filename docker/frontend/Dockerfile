@@ -11,6 +11,7 @@ FROM nginx:alpine
 COPY docker/frontend/nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY landing/ /usr/share/nginx/landing
+RUN chmod 755 /usr/share/nginx/landing && chmod 644 /usr/share/nginx/landing/*
 COPY downloads/ /usr/share/nginx/downloads
 RUN chmod 755 /usr/share/nginx/downloads && chmod 644 /usr/share/nginx/downloads/*
 EXPOSE 80
