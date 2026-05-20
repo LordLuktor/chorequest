@@ -13,7 +13,12 @@ import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { useState, useEffect } from 'react';
 
-const APP_VERSION = (Constants.expoConfig?.version || '0.0.0') as string;
+// nativeAppVersion = the actual installed APK (won't drift when OTAs land).
+// expoConfig.version = the JS bundle's reported version (matches OTA bundle).
+// Show both when they differ so you can see what's running atop what.
+const NATIVE_VERSION = (Constants.nativeAppVersion || Constants.expoConfig?.version || '0.0.0') as string;
+const BUNDLE_VERSION = (Constants.expoConfig?.version || NATIVE_VERSION) as string;
+const APP_VERSION = NATIVE_VERSION === BUNDLE_VERSION ? NATIVE_VERSION : `${NATIVE_VERSION} (bundle ${BUNDLE_VERSION})`;
 const UPDATE_ID = Updates.updateId ? Updates.updateId.slice(0, 8) : 'embedded';
 const RUNTIME = (Constants.expoConfig?.runtimeVersion as string | undefined) || '—';
 

@@ -11,7 +11,11 @@ interface VersionManifest {
   releaseNotes?: string;
 }
 
-const INSTALLED = (Constants.expoConfig?.version || '0.0.0') as string;
+// Read the NATIVE APK's version, not the bundle's. Bundle version can drift
+// when an OTA is fetched (the bundle ships with its own expoConfig.version);
+// nativeAppVersion comes from AndroidManifest/Info.plist and is the actual
+// installed binary version we want to compare against the manifest.
+const INSTALLED = (Constants.nativeAppVersion || Constants.expoConfig?.version || '0.0.0') as string;
 
 function compare(a: string, b: string): number {
   const pa = a.split('.').map(n => parseInt(n, 10) || 0);
