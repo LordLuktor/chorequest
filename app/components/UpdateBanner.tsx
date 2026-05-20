@@ -11,10 +11,11 @@ interface VersionManifest {
   releaseNotes?: string;
 }
 
-// Read the NATIVE APK's version, not the bundle's. Bundle version can drift
-// when an OTA is fetched (the bundle ships with its own expoConfig.version);
-// nativeAppVersion comes from AndroidManifest/Info.plist and is the actual
-// installed binary version we want to compare against the manifest.
+// Compares manifest.version vs the bundle's reported version (expoConfig.version).
+// We publish OTA bundles at one minor below the target APK version (e.g. 1.0.9
+// when the available native APK is 1.1.0). That way bundle 1.0.9 < manifest 1.1.0
+// → banner appears, and once the user installs the v1.1.0 APK, expoConfig.version
+// becomes 1.1.0 (matches manifest) and the banner stops.
 const INSTALLED = (Constants.nativeAppVersion || Constants.expoConfig?.version || '0.0.0') as string;
 
 function compare(a: string, b: string): number {
