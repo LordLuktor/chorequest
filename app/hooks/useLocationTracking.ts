@@ -2,10 +2,29 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Platform, AppState, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reportLocation, getAccessToken } from '../lib/api';
 import { API_BASE } from '../lib/constants';
 import { useAuth } from '../providers/AuthProvider';
+
+// Defensive require: APKs built before @react-native-async-storage was added
+// (v1.0.0) can still load this bundle. Falls back to an in-memory map.
+let _storage: any = null;
+try {
+  _storage = require('@react-native-async-storage/async-storage').default;
+} catch {}
+const _memStore: Record<string, string> = {};
+async function safeSet(key: string, value: string): Promise<void> {
+  if (_storage) {
+    try { await _storage.setItem(key, value); return; } catch {}
+  }
+  _memStore[key] = value;
+}
+async function safeGet(key: string): Promise<string | null> {
+  if (_storage) {
+    try { return await _storage.getItem(key); } catch {}
+  }
+  return _memStore[key] ?? null;
+}
 
 const BACKGROUND_LOCATION_TASK = 'background-location-task';
 
@@ -47,8 +66,8 @@ try {
       }).catch(() => {});
       try {
         if (typeof speed === 'number' && speed >= 0) {
-          await AsyncStorage.setItem(KEY_LAST_SPEED, String(speed));
-          await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+          await safeSet(KEY_LAST_SPEED, String(speed));
+          await safeSet(KEY_LAST_SPEED_AT, String(Date.now()));
         }
       } catch {}
     }
@@ -109,7 +128,7 @@ export function useLocationTracking(isAuthenticated: boolean) {
   const applyMode = useCallback(async (next: Mode) => {
     if (modeRef.current === next) return;
     modeRef.current = next;
-    try { await AsyncStorage.setItem(KEY_CURRENT_MODE, next); } catch {}
+    try { await safeSet(KEY_CURRENT_MODE, next); } catch {}
     if (Platform.OS !== 'web') {
       const ms = intervalForMode(next);
       await startBackgroundTrackingAt(ms);
@@ -127,8 +146,8 @@ export function useLocationTracking(isAuthenticated: boolean) {
     let isFast = false;
     try {
       const [s, t] = await Promise.all([
-        AsyncStorage.getItem(KEY_LAST_SPEED),
-        AsyncStorage.getItem(KEY_LAST_SPEED_AT),
+        safeGet(KEY_LAST_SPEED),
+        safeGet(KEY_LAST_SPEED_AT),
       ]);
       const speed = s ? parseFloat(s) : 0;
       const at = t ? parseInt(t, 10) : 0;
@@ -157,8 +176,8 @@ export function useLocationTracking(isAuthenticated: boolean) {
       });
       if (typeof loc.coords.speed === 'number' && loc.coords.speed >= 0) {
         try {
-          await AsyncStorage.setItem(KEY_LAST_SPEED, String(loc.coords.speed));
-          await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+          await safeSet(KEY_LAST_SPEED, String(loc.coords.speed));
+          await safeSet(KEY_LAST_SPEED_AT, String(Date.now()));
         } catch {}
       }
     } catch {}
@@ -201,8 +220,8 @@ export function useLocationTracking(isAuthenticated: boolean) {
           });
           if (typeof loc.coords.speed === 'number' && loc.coords.speed >= 0) {
             try {
-              await AsyncStorage.setItem(KEY_LAST_SPEED, String(loc.coords.speed));
-              await AsyncStorage.setItem(KEY_LAST_SPEED_AT, String(Date.now()));
+              await safeSet(KEY_LAST_SPEED, String(loc.coords.speed));
+              await safeSet(KEY_LAST_SPEED_AT, String(Date.now()));
             } catch {}
           }
         } catch {}
