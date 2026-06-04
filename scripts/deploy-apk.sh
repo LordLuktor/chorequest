@@ -112,6 +112,13 @@ ls -1t "$ROOT"/downloads/chorequest-*.apk 2>/dev/null | tail -n +$((KEEP_APKS + 
 done
 
 echo "$(date): APK ready. Rebuilding frontend..."
-docker build -t chorequest-frontend:latest -f "$ROOT/docker/frontend/Dockerfile" "$ROOT"
-docker service update --force chorequest_frontend
+if ! docker build -t "chorequest-frontend:$VERSION" -t chorequest-frontend:latest \
+      -f "$ROOT/docker/frontend/Dockerfile" "$ROOT"; then
+  echo "$(date): Frontend image build FAILED — leaving the running service untouched"
+  exit 1
+fi
+# Update to the version-TAGGED image, not --force. In Swarm a plain --force
+# restarts tasks on the old pinned :latest digest and never picks up the new
+# build; --image re-resolves the tag to the freshly built image.
+docker service update --image "chorequest-frontend:$VERSION" chorequest_frontend
 echo "$(date): Frontend deployed with v$VERSION ($APK_NAME)"

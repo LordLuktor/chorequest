@@ -1,7 +1,10 @@
 # Build stage — Expo web export
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY app/package*.json ./
+# .npmrc carries legacy-peer-deps=true, required for npm ci to resolve the
+# react-native-android-widget peer set on canary Expo. Must be copied BEFORE
+# npm ci or the install fails with ERESOLVE.
+COPY app/package*.json app/.npmrc ./
 RUN npm ci
 COPY app/ ./
 RUN npx expo export --platform web
