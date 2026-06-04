@@ -2,7 +2,7 @@
   "expo": {
     "name": "ChoreQuest",
     "slug": "chorequest",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -36,7 +36,7 @@
     "updates": {
       "url": "https://u.expo.dev/207dba4b-11fa-42f6-9db4-28052c57251d"
     },
-    "runtimeVersion": "1.1.0",
+    "runtimeVersion": "1.2.0",
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
@@ -52,7 +52,28 @@
           "isAndroidBackgroundLocationEnabled": true
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "ChoreCalendar",
+              "label": "ChoreQuest Calendar",
+              "description": "This week's chores at a glance — tap to check them off.",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
+              "maxResizeWidth": "320dp",
+              "maxResizeHeight": "450dp",
+              "previewImage": "./assets/widget-preview.png",
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "router": {},

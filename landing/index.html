@@ -3,8 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChoreQuest — Make Chores an Adventure</title>
-<meta name="description" content="The family chore platform that turns household tasks into rewarding quests. Points, streaks, GPS tracking, and real-time updates on Android and web.">
+<title>ChoreQuest — Make Chores an Adventure | Gamified Family Chore App</title>
+<meta name="description" content="The family chore platform that turns household tasks into rewarding quests. Points, streaks, GPS tracking, rewards, and real-time updates on Android and web.">
+<meta name="keywords" content="family chore app, chore chart app, kids chore tracker, gamified chores, household task manager, allowance app, chore rewards">
+<meta name="author" content="Steinmetz Ventures">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#6366f1">
+<link rel="canonical" href="https://chores.steinmetz.ltd/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ChoreQuest">
+<meta property="og:title" content="ChoreQuest — Make Chores an Adventure">
+<meta property="og:description" content="The family chore platform that turns household tasks into rewarding quests. Points, streaks, GPS tracking, and rewards on Android and web.">
+<meta property="og:url" content="https://chores.steinmetz.ltd/">
+<meta property="og:image" content="https://chores.steinmetz.ltd/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ChoreQuest — Make Chores an Adventure">
+<meta name="twitter:description" content="The family chore platform that turns household tasks into rewarding quests on Android and web.">
+<meta name="twitter:image" content="https://chores.steinmetz.ltd/og-image.png">
+
+<!-- Structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MobileApplication",
+  "name": "ChoreQuest",
+  "applicationCategory": "LifestyleApplication",
+  "operatingSystem": "Android, Web",
+  "url": "https://chores.steinmetz.ltd/",
+  "description": "The family chore platform that turns household tasks into rewarding quests. Points, streaks, GPS tracking, rewards, and real-time updates.",
+  "image": "https://chores.steinmetz.ltd/og-image.png",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "publisher": { "@type": "Organization", "name": "Steinmetz Ventures", "url": "https://steinmetz.ltd/" }
+}
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
@@ -792,11 +833,38 @@ footer {
   transition: color 0.2s;
 }
 .footer-col a:hover { color: var(--text); }
+.footer-network {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.footer-network h4 {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.footer-network-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 28px;
+}
+.footer-network-links a {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.footer-network-links a:hover { color: var(--primary-light); }
 .footer-bottom {
   text-align: center;
   font-size: 0.82rem;
   color: var(--text-dim);
   padding-top: 32px;
+  margin-top: 32px;
   border-top: 1px solid var(--border);
 }
 </style>
@@ -974,7 +1042,7 @@ footer {
           <ol style="color: var(--text-dim); font-size: 0.8rem; margin-top: 12px; padding-left: 20px; line-height: 1.8;">
             <li>Tap <strong style="color: var(--text-muted);">Download for Android</strong> above</li>
             <li>When prompted, tap <strong style="color: var(--text-muted);">Download anyway</strong> (Chrome may warn about unknown sources)</li>
-            <li>Open the downloaded <code style="background: var(--surface-3); padding: 2px 6px; border-radius: 4px;">chorequest.apk</code> file</li>
+            <li>Open the downloaded <code style="background: var(--surface-3); padding: 2px 6px; border-radius: 4px;">ChoreQuest</code> file from your notifications or Downloads folder</li>
             <li>If asked, enable <strong style="color: var(--text-muted);">Install from this source</strong> in Settings</li>
             <li>Tap <strong style="color: var(--text-muted);">Install</strong> — done!</li>
           </ol>
@@ -1015,6 +1083,16 @@ footer {
           <li><a href="/privacy">Privacy Policy</a></li>
           <li><a href="/terms">Terms of Service</a></li>
         </ul>
+      </div>
+    </div>
+    <div class="footer-network">
+      <h4>More from the Steinmetz Network</h4>
+      <div class="footer-network-links">
+        <a href="https://steinmetz.ltd">Steinmetz Ventures</a>
+        <a href="https://pool.steinmetz.ltd">RackOS</a>
+        <a href="https://aac.steinmetz.ltd">OpenVoice</a>
+        <a href="https://fsm.steinmetz.ltd">Steinmetz FSM</a>
+        <a href="https://fundraiser.steinmetz.ltd">Fundraiser Pro</a>
       </div>
     </div>
     <div class="footer-bottom">

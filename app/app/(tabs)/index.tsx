@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ScrollView, RefreshControl, Alert, Platform } from 'react-native';
+import { View, Text, Pressable, ScrollView, RefreshControl, Alert, Platform, Linking } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTasks, getMembers, completeTask, skipTask, undoTask, triggerSOS, requestCheckin, getLocations, type TaskInstance, type Member, type MemberLocation } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';

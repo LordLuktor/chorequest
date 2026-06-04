@@ -101,8 +101,9 @@ export default function ShoppingScreen() {
   }, [uncheckedItems, checkedItems]);
 
   const renderRow = useCallback(({ item }: { item: ListRow }) => {
-    // Divider row
-    if ('_type' in item && item._type === 'divider') {
+    // Divider row — `_type` only exists on the divider, so this also narrows
+    // `item` to ShoppingItem for the rest of the function.
+    if ('_type' in item) {
       return (
         <View
           style={{

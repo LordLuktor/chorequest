@@ -9,6 +9,7 @@ import { ThemeProvider, useTheme } from '../providers/ThemeProvider';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useLocationTracking } from '../hooks/useLocationTracking';
 import { UpdateBanner } from '../components/UpdateBanner';
+import { syncWidgetIdentity, clearWidgetIdentity, refreshChoreWidget } from '../lib/widget-bridge';
 import * as Updates from 'expo-updates';
 
 function useOTAUpdates() {
@@ -32,7 +33,7 @@ function useOTAUpdates() {
 }
 
 function AuthGate() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, member } = useAuth();
   const { colors } = useTheme();
   useWebSocket();
   useLocationTracking(isAuthenticated);
@@ -47,6 +48,28 @@ function AuthGate() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  // Keep the Android widget's cached identity in sync with who's logged in.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    if (member) syncWidgetIdentity({ id: member.id, name: member.name });
+    else clearWidgetIdentity();
+  }, [member?.id]);
+
+  // Re-draw placed widgets shortly after any task/member data changes from any
+  // screen. Debounced so a burst of query invalidations collapses to one draw.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsub = queryClient.getQueryCache().subscribe((event) => {
+      const key = (event?.query?.queryKey?.[0]) as string | undefined;
+      if (key === 'tasks' || key === 'members') {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { refreshChoreWidget(); }, 1500);
+      }
+    });
+    return () => { if (timer) clearTimeout(timer); unsub(); };
   }, []);
 
   useEffect(() => {
