@@ -2,7 +2,7 @@
 
 A cross-platform household chore management platform that turns recurring tasks into rewarding quests. Families create recurring chores, assign them to members on a weekly schedule, and track completion with points, streaks, achievements, and an allowance system tied to task completion.
 
-**Live:** [chores.steinmetz.ltd](https://chores.steinmetz.ltd)
+**Live:** [chores.steinmetz.ltd](https://chores.steinmetz.ltd) | **Case study:** [Building a Custom App When Off-the-Shelf Software Fails](https://scottsteinmetz.biz/blog/chorequest-chore-app)
 
 ---
 
