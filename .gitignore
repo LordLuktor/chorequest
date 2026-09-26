@@ -9,3 +9,8 @@ dist/
 app/dist/
 api/dist/
 backups/
+
+# APKs are build artifacts: produced by scripts/deploy-apk.sh and baked into
+# the frontend image from the local downloads/ dir. Not tracked in git.
+downloads/*
+!downloads/.gitkeep
