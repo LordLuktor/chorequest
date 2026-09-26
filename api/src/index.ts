@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'node:http';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { membersRouter } from './routes/members';
 import { templatesRouter } from './routes/templates';
 import { tasksRouter } from './routes/tasks';
@@ -18,9 +18,12 @@ import { locationsRouter } from './routes/locations';
 import { shoppingRouter } from './routes/shopping';
 import { rewardsRouter } from './routes/rewards';
 import { safetyRouter } from './routes/safety';
+import { eventsRouter } from './routes/events';
+import { menuRouter } from './routes/menu';
 import { startScheduler } from './scheduler';
 import { cleanExpiredTokens } from './services/auth';
 import { setupWebSocket } from './websocket';
+import { verifyToken } from './services/auth';
 import db from './db';
 
 const app = express();
@@ -38,13 +41,37 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 
 // Rate limiting
+// Auth routes are exempt from this shared bucket and rely on their own
+// stricter limiters (see routes/auth.ts) — otherwise a retry storm on any other
+// endpoint from the same key can exhaust the bucket and lock out login too.
+//
+// Household members typically share one home-network IP, so keying purely by
+// IP means one busy device (background location polling, multiple open tabs)
+// can exhaust the bucket for everyone else in the house. Identify the caller
+// from their JWT when present and key on that instead; only fall back to IP
+// for unauthenticated requests. This is a soft check — it never rejects a
+// request itself, that's still requireAuth's job inside each router.
+function identifyForRateLimit(req: express.Request, _res: express.Response, next: express.NextFunction): void {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      req.user = verifyToken(authHeader.slice(7));
+    } catch {
+      // Invalid/expired token — requireAuth will reject it downstream; fall back to IP for the key.
+    }
+  }
+  next();
+}
+
 const limiter = rateLimit({
   windowMs: 60_000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.originalUrl.startsWith('/api/v1/auth') || req.originalUrl.startsWith('/api/auth'),
+  keyGenerator: (req) => req.user?.sub ?? ipKeyGenerator(req.ip!),
 });
-app.use('/api', limiter);
+app.use('/api', identifyForRateLimit, limiter);
 
 // Health check (unauthenticated)
 app.get('/api/health', async (_req, res) => {
@@ -75,6 +102,8 @@ app.use('/api/v1/locations', locationsRouter);
 app.use('/api/v1/shopping', shoppingRouter);
 app.use('/api/v1/rewards', rewardsRouter);
 app.use('/api/v1/safety', safetyRouter);
+app.use('/api/v1/events', eventsRouter);
+app.use('/api/v1/menu', menuRouter);
 
 // Legacy routes (same routers, old paths — for current frontend until it's rebuilt)
 app.use('/api/members', membersRouter);
@@ -91,6 +120,8 @@ app.use('/api/locations', locationsRouter);
 app.use('/api/shopping', shoppingRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/safety', safetyRouter);
+app.use('/api/events', eventsRouter);
+app.use('/api/menu', menuRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -98,7 +129,24 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ message: 'Internal server error' });
 });
 
+async function waitForDb(maxAttempts = 10, delayMs = 3000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await db.raw('SELECT 1');
+      return;
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      console.log(`Database not ready (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function start() {
+  // Swarm restarts all services together on reboot; wait out the race
+  // where the API container comes up before Postgres accepts connections.
+  await waitForDb();
+
   // Run migrations
   console.log('Running migrations...');
   await db.migrate.latest({

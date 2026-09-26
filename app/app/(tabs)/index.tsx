@@ -1,11 +1,11 @@
-import { View, Text, Pressable, ScrollView, RefreshControl, Alert, Platform, Linking } from 'react-native';
+import { View, Text, Pressable, ScrollView, RefreshControl, Alert, Platform, Linking, Modal } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTasks, getMembers, completeTask, skipTask, undoTask, triggerSOS, requestCheckin, getLocations, type TaskInstance, type Member, type MemberLocation } from '../../lib/api';
+import { getTasks, getMembers, completeTask, skipTask, undoTask, triggerSOS, requestCheckin, getLocations, getEvents, getMenuSelections, getMenuItems, setMenuSelection, clearMenuSelection, getMenuItemRequests, resolveMenuItemRequest, type TaskInstance, type Member, type MemberLocation, type CalendarEventOccurrence, type MenuItem } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
-import { format } from 'date-fns';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { format, addDays, isWeekend } from 'date-fns';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useCallback } from 'react';
-import { Check, SkipForward, Flame, Star, CheckCircle, RefreshCw, ShieldAlert, MapPin, Send } from 'lucide-react-native';
+import { Check, X, SkipForward, Flame, Star, CheckCircle, RefreshCw, ShieldAlert, MapPin, Send, CalendarDays, Coffee, Sandwich, LogOut, Lightbulb } from 'lucide-react-native';
 import { format as formatDate } from 'date-fns';
 import { EasyModeView } from '../../components/EasyModeView';
 import { useTabBarPadding } from '../../hooks/useTabBarPadding';
@@ -17,12 +17,22 @@ const C = {
   success: '#22c55e', danger: '#ef4444', warning: '#f59e0b',
 };
 
+function formatTime12h(time24: string): string {
+  const [hStr, mStr] = time24.split(':');
+  let h = parseInt(hStr, 10);
+  const meridiem = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mStr} ${meridiem}`;
+}
+
 export default function DashboardScreen() {
-  const { member, household } = useAuth();
+  const { member, household, logout } = useAuth();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const tabBarPadding = useTabBarPadding();
   const today = format(new Date(), 'yyyy-MM-dd');
+  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
   const isDisplay = member?.role === 'display';
 
   const { data: tasks = [] } = useQuery({
@@ -30,6 +40,10 @@ export default function DashboardScreen() {
     queryFn: () => getTasks({ start: today, end: today }),
   });
   const { data: members = [] } = useQuery({ queryKey: ['members'], queryFn: getMembers });
+  const { data: events = [] } = useQuery({
+    queryKey: ['events', { start: today, end: tomorrow }],
+    queryFn: () => getEvents({ start: today, end: tomorrow }),
+  });
   const isParent = member?.role === 'parent';
 
   const { data: locations = [] } = useQuery({
@@ -52,9 +66,16 @@ export default function DashboardScreen() {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     await queryClient.invalidateQueries({ queryKey: ['members'] });
+    await queryClient.invalidateQueries({ queryKey: ['events'] });
     if (isParent) await queryClient.invalidateQueries({ queryKey: ['locations'] });
     setRefreshing(false);
   }, [queryClient, isParent]);
+
+  const handleLogout = useCallback(() => {
+    if (window.confirm('Log out of this device?')) {
+      logout();
+    }
+  }, [logout]);
 
   const completeMut = useMutation({
     mutationFn: (id: number) => completeTask(id, member!.id),
@@ -121,6 +142,16 @@ export default function DashboardScreen() {
   const allCompleted = allTasks.filter(t => t.status === 'completed');
   const me = members.find((m: Member) => m.id === member?.id);
 
+  // Today's events, all-day first, then by time
+  const todayEvents = events
+    .filter(e => !e.is_cancelled)
+    .sort((a, b) => {
+      if (!a.event_time && !b.event_time) return 0;
+      if (!a.event_time) return -1;
+      if (!b.event_time) return 1;
+      return a.event_time.localeCompare(b.event_time);
+    });
+
   // Group tasks by member for display mode
   const tasksByMember = isDisplay
     ? members
@@ -131,6 +162,58 @@ export default function DashboardScreen() {
         }))
         .filter(g => g.tasks.length > 0)
     : [];
+
+  // Today's meal menu, shown below each kid's chores on display mode
+  // TEMP: showing every day (including weekends) for Scott to preview — revert to
+  // `isDisplay && !isWeekend(new Date())` once confirmed.
+  const showMenu = isDisplay;
+  const { data: todayMenu = [] } = useQuery({
+    queryKey: ['menuSelections', 'today', today],
+    queryFn: () => getMenuSelections({ start: today, end: today }),
+    enabled: showMenu,
+  });
+  function findMenuItem(memberId: number, slot: 'breakfast' | 'lunch') {
+    return todayMenu.find(s => s.member_id === memberId && s.meal_slot === slot);
+  }
+
+  // Breakfast picker (display mode) — tap a kid's breakfast to pick it for them
+  const [breakfastPickerFor, setBreakfastPickerFor] = useState<{ memberId: number; memberName: string } | null>(null);
+  const insets = useSafeAreaInsets();
+  const { data: pickerBreakfastItems = [] } = useQuery({
+    queryKey: ['menuItems', 'breakfast', breakfastPickerFor?.memberId],
+    queryFn: () => getMenuItems({ meal_slot: 'breakfast', member: breakfastPickerFor!.memberId }),
+    enabled: !!breakfastPickerFor,
+  });
+  const setBreakfastMut = useMutation({
+    mutationFn: (data: { member_id: number; menu_item_id: number }) =>
+      setMenuSelection({ member_id: data.member_id, date: today, meal_slot: 'breakfast', menu_item_id: data.menu_item_id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuSelections'] });
+      setBreakfastPickerFor(null);
+    },
+  });
+  const clearBreakfastMut = useMutation({
+    mutationFn: (memberId: number) => clearMenuSelection({ member_id: memberId, date: today, meal_slot: 'breakfast' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuSelections'] });
+      setBreakfastPickerFor(null);
+    },
+  });
+
+  // Menu item requests (display mode) — kids' requests, resolvable right from the kiosk
+  const { data: menuItemRequests = [] } = useQuery({
+    queryKey: ['menuItemRequests'],
+    queryFn: getMenuItemRequests,
+    enabled: isDisplay,
+  });
+  const pendingMenuRequests = menuItemRequests.filter(r => r.status === 'pending');
+  const resolveMenuRequestMut = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'approved' | 'denied' }) => resolveMenuItemRequest(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItemRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+    },
+  });
 
   // Easy Mode — show simplified view for this user
   const isEasyMode = member?.easyMode && !isDisplay && !isParent;
@@ -175,6 +258,11 @@ export default function DashboardScreen() {
                 <Text style={{ fontSize: 11, color: C.muted }}>points</Text>
               </View>
             )}
+            {Platform.OS === 'web' && (
+              <Pressable onPress={handleLogout} style={{ padding: 8, borderRadius: 8, backgroundColor: C.surface3 }}>
+                <LogOut size={16} color={C.danger} />
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -195,6 +283,21 @@ export default function DashboardScreen() {
                 </View>
               ))}
             </View>
+
+            {/* Today's Events */}
+            {todayEvents.length > 0 && (
+              <View style={{ marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <CalendarDays size={18} color={C.primaryLight} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: 'white', marginLeft: 8 }}>Today's Events</Text>
+                </View>
+                <View style={{ gap: 8 }}>
+                  {todayEvents.map(occurrence => (
+                    <EventRow key={occurrence.instance_id} occurrence={occurrence} />
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Tasks grouped by member */}
             {tasksByMember.length === 0 ? (
@@ -222,20 +325,96 @@ export default function DashboardScreen() {
                         {done}/{memberTasks.length} done
                       </Text>
                     </View>
-                    <View style={{ gap: 8 }}>
-                      {memberTasks.map(t => (
-                        <TaskRow
-                          key={t.id}
-                          task={t}
-                          onComplete={() => completeMut.mutate(t.id)}
-                          onSkip={() => skipMut.mutate(t.id)}
-                          onUndo={() => undoMut.mutate(t.id)}
-                        />
-                      ))}
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <View style={{ flex: 1, gap: 8 }}>
+                        {memberTasks.map(t => (
+                          <TaskRow
+                            key={t.id}
+                            task={t}
+                            onComplete={() => completeMut.mutate(t.id)}
+                            onSkip={() => skipMut.mutate(t.id)}
+                            onUndo={() => undoMut.mutate(t.id)}
+                          />
+                        ))}
+                      </View>
+                      {showMenu && m.role === 'child' && (() => {
+                        const breakfast = findMenuItem(m.id, 'breakfast');
+                        const lunch = findMenuItem(m.id, 'lunch');
+                        return (
+                          <View style={{ flex: 1, gap: 8 }}>
+                            <Pressable
+                              onPress={() => setBreakfastPickerFor({ memberId: m.id, memberName: m.name })}
+                              style={{
+                                flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,
+                                borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border,
+                              }}
+                            >
+                              <Coffee size={14} color={C.primaryLight} />
+                              <Text style={{ fontSize: 12, color: breakfast ? C.text : C.dim, marginLeft: 8, flex: 1 }} numberOfLines={1}>
+                                {breakfast ? breakfast.item_name : 'Choose breakfast…'}
+                              </Text>
+                            </Pressable>
+                            <View style={{
+                              flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,
+                              borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border,
+                            }}>
+                              <Sandwich size={14} color={C.primaryLight} />
+                              <Text style={{ fontSize: 12, color: lunch ? C.text : C.dim, marginLeft: 8, flex: 1 }} numberOfLines={1}>
+                                {lunch ? lunch.item_name : 'No lunch set'}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })()}
                     </View>
                   </View>
                 );
               })
+            )}
+
+            {/* Menu adjustment requests */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 12 }}>
+              <Lightbulb size={18} color={C.primaryLight} />
+              <Text style={{ fontSize: 16, fontWeight: '600', color: 'white', marginLeft: 8 }}>Menu Requests</Text>
+              {pendingMenuRequests.length > 0 && (
+                <View style={{ marginLeft: 8, backgroundColor: C.primary + '30', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: C.primaryLight }}>{pendingMenuRequests.length}</Text>
+                </View>
+              )}
+            </View>
+            {pendingMenuRequests.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 20, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border }}>
+                <Text style={{ color: C.dim, fontSize: 13 }}>No pending menu requests</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {pendingMenuRequests.map(rq => (
+                  <View key={rq.id} style={{ backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{rq.name}</Text>
+                    <Text style={{ fontSize: 12, color: C.muted, marginBottom: 10, textTransform: 'capitalize' }}>
+                      {rq.meal_slot} · requested by {rq.requested_by_name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <Pressable
+                        onPress={() => resolveMenuRequestMut.mutate({ id: rq.id, status: 'approved' })}
+                        disabled={resolveMenuRequestMut.isPending}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: C.success + '20' }}
+                      >
+                        <Check size={16} color={C.success} />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: C.success, marginLeft: 6 }}>Approve</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => resolveMenuRequestMut.mutate({ id: rq.id, status: 'denied' })}
+                        disabled={resolveMenuRequestMut.isPending}
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: C.danger + '20' }}
+                      >
+                        <X size={16} color={C.danger} />
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: C.danger, marginLeft: 6 }}>Deny</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
             )}
           </>
         ) : (
@@ -278,6 +457,21 @@ export default function DashboardScreen() {
                 </View>
               ))}
             </View>
+
+            {/* Today's Events */}
+            {todayEvents.length > 0 && (
+              <View style={{ marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <CalendarDays size={18} color={C.primaryLight} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: 'white', marginLeft: 8 }}>Today's Events</Text>
+                </View>
+                <View style={{ gap: 8 }}>
+                  {todayEvents.map(occurrence => (
+                    <EventRow key={occurrence.instance_id} occurrence={occurrence} />
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* My Tasks */}
             <Text style={{ fontSize: 18, fontWeight: '600', color: 'white', marginBottom: 12 }}>Today's Tasks</Text>
@@ -392,7 +586,95 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* ── Breakfast picker (display mode) ───────────────────────── */}
+      <Modal visible={!!breakfastPickerFor} transparent animationType="slide" onRequestClose={() => setBreakfastPickerFor(null)}>
+        <Pressable onPress={() => setBreakfastPickerFor(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <Pressable onPress={() => {}} style={{
+            backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+            paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 + insets.bottom, maxHeight: '70%',
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: 'white', marginBottom: 16, textAlign: 'center' }}>
+              {breakfastPickerFor?.memberName}'s Breakfast
+            </Text>
+            {breakfastPickerFor && findMenuItem(breakfastPickerFor.memberId, 'breakfast') && (
+              <Pressable
+                disabled={clearBreakfastMut.isPending}
+                onPress={() => clearBreakfastMut.mutate(breakfastPickerFor.memberId)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: 10, padding: 12, marginBottom: 12,
+                }}
+              >
+                <Text style={{ color: C.danger, fontSize: 13, fontWeight: '600' }}>
+                  {clearBreakfastMut.isPending ? 'Clearing…' : "Clear today's breakfast"}
+                </Text>
+              </Pressable>
+            )}
+            <ScrollView style={{ maxHeight: 360 }}>
+              {pickerBreakfastItems.length === 0 ? (
+                <Text style={{ color: C.dim, textAlign: 'center', paddingVertical: 20 }}>No breakfast items set up yet — add some from the Menu tab.</Text>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {pickerBreakfastItems.map((item: MenuItem) => {
+                    const exhausted = item.remaining === 0;
+                    return (
+                      <Pressable
+                        key={item.id}
+                        disabled={exhausted || setBreakfastMut.isPending}
+                        onPress={() => {
+                          if (!breakfastPickerFor) return;
+                          setBreakfastMut.mutate({ member_id: breakfastPickerFor.memberId, menu_item_id: item.id });
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                          backgroundColor: C.surface3, borderRadius: 10, padding: 14,
+                          opacity: exhausted ? 0.4 : 1,
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontSize: 14 }}>{item.name}</Text>
+                        {item.remaining !== null && item.remaining !== undefined && (
+                          <Text style={{ color: exhausted ? C.danger : C.dim, fontSize: 12 }}>
+                            {exhausted ? 'Used up this week' : `${item.remaining} left this week`}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function EventRow({ occurrence }: { occurrence: CalendarEventOccurrence }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 12,
+      padding: 14, borderWidth: 1, borderColor: C.primaryLight + '40',
+    }}>
+      <Text style={{ fontSize: 20, marginRight: 12 }}>{occurrence.icon || '📅'}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14, fontWeight: '500', color: 'white' }}>{occurrence.title}</Text>
+        {occurrence.assignees.length > 0 && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 8, flexWrap: 'wrap' }}>
+            {occurrence.assignees.map(a => (
+              <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: a.color }} />
+                <Text style={{ fontSize: 12, color: C.muted }}>{a.name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+      <Text style={{ fontSize: 12, fontWeight: '600', color: C.primaryLight }}>
+        {occurrence.event_time ? formatTime12h(occurrence.event_time.slice(0, 5)) : 'All day'}
+      </Text>
+    </View>
   );
 }
 

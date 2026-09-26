@@ -514,3 +514,140 @@ export const verifyUserPin = (memberId: number, pin: string) =>
 
 export const getPinStatus = () =>
   request<{ id: number; name: string; avatar_color: string; role: string; has_pin: boolean }[]>('/auth/pin-status');
+
+// ── Calendar Events API ──────────────────────────────────────────
+export interface CalendarEvent {
+  id: number;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  assigned_to: number[];
+  event_date: string;
+  event_time: string | null;
+  end_time: string | null;
+  recurrence_rule: string | null;
+  recurrence_end_date: string | null;
+  reminder_minutes_before: number[];
+}
+
+export interface CalendarEventAssignee {
+  id: number;
+  name: string;
+  color: string;
+}
+
+export interface CalendarEventOccurrence {
+  instance_id: number;
+  event_id: number;
+  title: string;
+  icon: string | null;
+  description: string | null;
+  occurrence_date: string;
+  series_start_date: string;
+  event_time: string | null;
+  end_time: string | null;
+  is_cancelled: boolean;
+  assignees: CalendarEventAssignee[];
+  recurrence_rule: string | null;
+  recurrence_end_date: string | null;
+  reminder_minutes_before: number[];
+  is_recurring: boolean;
+}
+
+export const getEvents = (params: { start?: string; end?: string }) => {
+  const search = new URLSearchParams();
+  if (params.start) search.set('start', params.start);
+  if (params.end) search.set('end', params.end);
+  return request<CalendarEventOccurrence[]>(`/events?${search.toString()}`);
+};
+
+export const createEvent = (data: Record<string, any>) =>
+  request<CalendarEvent>('/events', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateEvent = (id: number, data: Partial<CalendarEvent>) =>
+  request<CalendarEvent>(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteEvent = (id: number) =>
+  request<void>(`/events/${id}`, { method: 'DELETE' });
+
+export const cancelEventOccurrence = (instanceId: number) =>
+  request<{ id: number; is_cancelled: boolean }>(`/events/instances/${instanceId}/cancel`, { method: 'PUT' });
+
+// ── Meal Menu API ─────────────────────────────────────────────────
+export interface MenuItem {
+  id: number;
+  member_id: number | null;
+  member_name: string | null;
+  meal_slot: 'breakfast' | 'lunch';
+  name: string;
+  weekly_limit: number | null;
+  limit_scope: 'per_kid' | 'shared';
+  is_active: boolean;
+  available_days: number[] | null; // 1=Mon..5=Fri, lunch only; null = every day
+  remaining?: number | null; // present when fetched by a kid
+}
+
+export const getMenuItems = (params?: { meal_slot?: 'breakfast' | 'lunch'; include_inactive?: boolean; member?: number }) => {
+  const search = new URLSearchParams();
+  if (params?.meal_slot) search.set('meal_slot', params.meal_slot);
+  if (params?.include_inactive) search.set('include_inactive', '1');
+  if (params?.member) search.set('member', String(params.member));
+  const qs = search.toString();
+  return request<MenuItem[]>(`/menu/items${qs ? `?${qs}` : ''}`);
+};
+
+export const createMenuItem = (data: {
+  member_id?: number | null; meal_slot: 'breakfast' | 'lunch'; name: string;
+  weekly_limit?: number | null; limit_scope?: 'per_kid' | 'shared'; available_days?: number[] | null;
+}) => request<MenuItem>('/menu/items', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateMenuItem = (id: number, data: Partial<Pick<MenuItem, 'name' | 'weekly_limit' | 'limit_scope' | 'member_id' | 'is_active' | 'available_days'>>) =>
+  request<MenuItem>(`/menu/items/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteMenuItem = (id: number) => request<void>(`/menu/items/${id}`, { method: 'DELETE' });
+
+export interface MenuSelection {
+  id: number;
+  member_id: number;
+  date: string;
+  meal_slot: 'breakfast' | 'lunch';
+  menu_item_id: number;
+  item_name: string;
+}
+
+export const getMenuSelections = (params: { start: string; end: string; member?: number }) => {
+  const search = new URLSearchParams({ start: params.start, end: params.end });
+  if (params.member) search.set('member', String(params.member));
+  return request<MenuSelection[]>(`/menu/selections?${search.toString()}`);
+};
+
+export const setMenuSelection = (data: { member_id?: number; date: string; meal_slot: 'breakfast' | 'lunch'; menu_item_id: number }) =>
+  request<MenuSelection>('/menu/selections', { method: 'PUT', body: JSON.stringify(data) });
+
+export const swapMenuLunches = (data: { member_id?: number; date_a: string; date_b: string }) =>
+  request<{ message: string }>('/menu/selections/swap', { method: 'POST', body: JSON.stringify(data) });
+
+export const clearMenuSelection = (data: { member_id?: number; date: string; meal_slot: 'breakfast' | 'lunch' }) => {
+  const search = new URLSearchParams({ date: data.date, meal_slot: data.meal_slot });
+  if (data.member_id) search.set('member_id', String(data.member_id));
+  return request<void>(`/menu/selections?${search.toString()}`, { method: 'DELETE' });
+};
+
+export interface MenuItemRequest {
+  id: number;
+  meal_slot: 'breakfast' | 'lunch';
+  name: string;
+  status: string;
+  requested_by: number;
+  requested_by_name: string;
+  avatar_color: string;
+  created_at: string;
+}
+
+export const submitMenuItemRequest = (data: { meal_slot: 'breakfast' | 'lunch'; name: string }) =>
+  request<MenuItemRequest>('/menu/requests', { method: 'POST', body: JSON.stringify(data) });
+
+export const getMenuItemRequests = () => request<MenuItemRequest[]>('/menu/requests');
+
+export const resolveMenuItemRequest = (id: number, status: 'approved' | 'denied', options?: { weekly_limit?: number; limit_scope?: 'per_kid' | 'shared' }) =>
+  request(`/menu/requests/${id}`, { method: 'PUT', body: JSON.stringify({ status, ...options }) });

@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { Home, Calendar, ListChecks, ShoppingCart, Settings, Trophy, DollarSign, Gift, MapPin } from 'lucide-react-native';
+import { Home, Calendar, ListChecks, ShoppingCart, Settings, Trophy, DollarSign, Gift, MapPin, UtensilsCrossed } from 'lucide-react-native';
 import { getAllowanceSettings } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
 import { COLORS } from '../../lib/constants';
@@ -80,6 +80,14 @@ export default function TabsLayout() {
           title: 'Rewards',
           tabBarIcon: ({ color, size }) => <Gift size={size - 2} color={color} />,
           href: isSimplified ? null : (isPointsEconomy ? '/rewards' : null),
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color, size }) => <UtensilsCrossed size={size - 2} color={color} />,
+          href: isSimplified ? null : '/menu',
         }}
       />
       <Tabs.Screen

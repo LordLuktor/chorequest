@@ -81,6 +81,17 @@ export function useWebSocket() {
       queryClient.invalidateQueries({ queryKey: ['shopping'] });
     });
 
+    socket.on('events:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    });
+
+    socket.on('menu:updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['menuSelections'] });
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['menuItemRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['menuCatalog'] });
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;

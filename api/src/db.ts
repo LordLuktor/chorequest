@@ -18,8 +18,14 @@ const db = knex({
     database: process.env.DB_NAME || 'chorequest',
     user: process.env.DB_USER || 'chorequest',
     password: getPassword(),
+    keepAlive: true,
   },
-  pool: { min: 2, max: 10 },
+  pool: {
+    min: 0,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    acquireTimeoutMillis: 30000,
+  },
 });
 
 export default db;

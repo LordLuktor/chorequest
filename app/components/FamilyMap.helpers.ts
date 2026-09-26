@@ -41,6 +41,9 @@ export function buildMapHTML(
     `;
   }).join('\n');
 
+  const MAX_ZOOM = 21;
+  const MAX_NATIVE_ZOOM = 19;
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -52,15 +55,35 @@ export function buildMapHTML(
   html, body, #map { width: 100%; height: 100%; background: #0f0e1a; }
   .leaflet-popup-content-wrapper { border-radius: 8px; }
   .leaflet-popup-content { font-family: -apple-system, sans-serif; font-size: 13px; }
+  .leaflet-control-layers { background: #1a1830 !important; border: 1px solid #312e5a !important; border-radius: 8px !important; color: #e0e7ff !important; }
+  .leaflet-control-layers label { color: #e0e7ff !important; font-size: 13px !important; margin-bottom: 4px !important; }
+  .leaflet-control-attribution { background: rgba(26,24,48,0.75) !important; color: #94a3b8 !important; font-size: 10px !important; }
+  .leaflet-control-attribution a { color: #818cf8 !important; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
-  var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([${centerLat}, ${centerLng}], ${initialZoom});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-  }).addTo(map);
+  var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: ${MAX_ZOOM},
+    maxNativeZoom: ${MAX_NATIVE_ZOOM},
+    attribution: '&copy; OpenStreetMap contributors',
+  });
+  var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: ${MAX_ZOOM},
+    maxNativeZoom: ${MAX_NATIVE_ZOOM},
+    attribution: 'Tiles &copy; Esri',
+  });
+
+  var map = L.map('map', {
+    zoomControl: true,
+    attributionControl: true,
+    maxZoom: ${MAX_ZOOM},
+    layers: [streetLayer],
+  }).setView([${centerLat}, ${centerLng}], ${initialZoom});
+
+  L.control.layers({ 'Street': streetLayer, 'Satellite': satelliteLayer }, null, { collapsed: false }).addTo(map);
+
   ${markers}
   ${!focus && locations.length > 1 ? `map.fitBounds([${locations.map(l => `[${l.latitude},${l.longitude}]`).join(',')}], { padding: [40, 40] });` : ''}
 </script>

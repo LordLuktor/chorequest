@@ -1,9 +1,10 @@
 import cron from 'node-cron';
 import { RRule } from 'rrule';
 import db from './db';
-import { sendDailyReminders, sendOverdueReminders, isPushEnabled } from './services/push';
+import { sendDailyReminders, sendOverdueReminders, sendEventReminders, isPushEnabled } from './services/push';
 import { processDailyAllowance } from './services/allowance';
 import { processOverdueEscalation } from './services/overdue';
+import { runLunchAutoAssignment } from './routes/menu';
 import { acquireLock, releaseLock } from './redis';
 
 const GENERATE_DAYS_AHEAD = 30;
@@ -166,6 +167,74 @@ function formatRRuleDate(date: Date): string {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 }
 
+export async function generateEventInstances(eventId?: number, householdId?: string): Promise<void> {
+  try {
+    const query = db('calendar_events').whereNotNull('recurrence_rule');
+    if (eventId) query.where('id', eventId);
+    if (householdId) query.where('household_id', householdId);
+    const events = await query;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const futureLimit = new Date(today);
+    futureLimit.setDate(futureLimit.getDate() + GENERATE_DAYS_AHEAD);
+
+    for (const event of events) {
+      try {
+        await generateEventOccurrences(event, today, futureLimit);
+      } catch (err) {
+        console.error(`Error generating instances for event ${event.id}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error('Event instance generation error:', err);
+  }
+}
+
+async function generateEventOccurrences(
+  event: any,
+  today: Date,
+  futureLimit: Date
+): Promise<void> {
+  const rawStart = event.event_date instanceof Date
+    ? event.event_date
+    : new Date(String(event.event_date).split('T')[0] + 'T00:00:00Z');
+  const rule = RRule.fromString(`DTSTART:${formatRRuleDate(rawStart)}\nRRULE:${event.recurrence_rule}`);
+
+  const occurrences = rule.between(
+    new Date(today.getTime() - 86400000),
+    futureLimit,
+    true
+  );
+
+  const rawEnd = event.recurrence_end_date
+    ? (event.recurrence_end_date instanceof Date
+        ? event.recurrence_end_date
+        : new Date(String(event.recurrence_end_date).split('T')[0] + 'T23:59:59Z'))
+    : null;
+
+  const startStr = rawStart.toISOString().split('T')[0];
+
+  for (const occurrence of occurrences) {
+    const occurrenceDate = occurrence.toISOString().split('T')[0];
+    if (occurrenceDate < startStr) continue;
+    if (rawEnd && occurrence > rawEnd) continue;
+
+    try {
+      await db('calendar_event_instances')
+        .insert({
+          event_id: event.id,
+          occurrence_date: occurrenceDate,
+          household_id: event.household_id,
+        })
+        .onConflict(['event_id', 'occurrence_date'])
+        .ignore();
+    } catch {
+      // Ignore duplicates
+    }
+  }
+}
+
 export function startScheduler(): void {
   // Generate task instances daily at midnight + overdue check
   cron.schedule('0 0 * * *', async () => {
@@ -175,8 +244,23 @@ export function startScheduler(): void {
     try {
       console.log('Running scheduled instance generation...');
       await generateInstances();
+      await generateEventInstances();
+      await runLunchAutoAssignment();
       console.log('Instance generation complete.');
       await processOverdueEscalation();
+    } finally {
+      await releaseLock(lockKey);
+    }
+  });
+
+  // Event reminders every 10 minutes
+  cron.schedule('*/10 * * * *', async () => {
+    if (!isPushEnabled()) return;
+    const lockKey = 'cron:event-reminders';
+    const acquired = await acquireLock(lockKey, 300);
+    if (!acquired) { console.log('Skipping event reminders — another instance holds the lock'); return; }
+    try {
+      await sendEventReminders();
     } finally {
       await releaseLock(lockKey);
     }
@@ -227,5 +311,11 @@ export function startScheduler(): void {
   console.log('Generating initial task instances...');
   generateInstances().then(() => {
     console.log('Initial instance generation complete.');
+  });
+  generateEventInstances().then(() => {
+    console.log('Initial event instance generation complete.');
+  });
+  runLunchAutoAssignment().then(() => {
+    console.log('Initial lunch auto-assignment complete.');
   });
 }

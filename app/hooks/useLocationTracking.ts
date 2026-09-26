@@ -3,6 +3,7 @@ import { Platform, AppState, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { reportLocation, getAccessToken } from '../lib/api';
+import { getItem, setItem } from '../lib/storage';
 import { API_BASE } from '../lib/constants';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -40,6 +41,19 @@ const FAST_SPEED_M_S = 6.7;
 const KEY_CURRENT_MODE = 'cq.tracking.mode';
 const KEY_LAST_SPEED = 'cq.tracking.lastSpeed';
 const KEY_LAST_SPEED_AT = 'cq.tracking.lastSpeedAt';
+const KEY_LAST_POST_AT = 'cq.tracking.lastPostAt';
+const KEY_LAST_AUTH_FAILURE_AT = 'cq.tracking.lastAuthFailureAt';
+
+// Hard floor between background posts, independent of the configured cadence tier.
+// Android/iOS can deliver a backlog of queued location fixes as a burst of task
+// invocations after the app has been suspended a while — without this, each one
+// fires its own POST, and a run of 401s from a stale token can spike request volume
+// enough to trip the API's shared per-IP rate limit (which also gates login).
+const MIN_POST_INTERVAL_MS = 3 * 1000;
+// Once a refresh attempt itself fails (refresh token dead — session is truly over),
+// stop trying until the user reopens the app and logs in again, rather than retrying
+// every tick.
+const AUTH_FAILURE_COOLDOWN_MS = 5 * 60 * 1000;
 
 type Mode = 'default' | 'sos' | 'sos_fast';
 
@@ -49,6 +63,64 @@ function intervalForMode(m: Mode): number {
   return INTERVAL_DEFAULT;
 }
 
+// Posts one location sample. Debounced against burst task invocations, and
+// refresh-aware since the background/headless JS context may never have run
+// AuthProvider's loadTokens() and so can't rely on the in-memory access token.
+async function postLocationSample(latitude: number, longitude: number, accuracy?: number): Promise<void> {
+  const now = Date.now();
+
+  const lastPostAt = parseInt((await safeGet(KEY_LAST_POST_AT)) ?? '0', 10);
+  if (now - lastPostAt < MIN_POST_INTERVAL_MS) return;
+
+  const lastAuthFailureAt = parseInt((await safeGet(KEY_LAST_AUTH_FAILURE_AT)) ?? '0', 10);
+  if (now - lastAuthFailureAt < AUTH_FAILURE_COOLDOWN_MS) return;
+
+  await safeSet(KEY_LAST_POST_AT, String(now));
+
+  const token = getAccessToken() ?? (await getItem('accessToken'));
+  if (!token) return;
+
+  const base = Platform.OS === 'web' ? '/api/v1' : API_BASE;
+  const body = JSON.stringify({ latitude, longitude, accuracy });
+  const post = (t: string) => fetch(`${base}/locations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${t}` },
+    body,
+  });
+
+  let res: Response;
+  try {
+    res = await post(token);
+  } catch {
+    return;
+  }
+  if (res.status !== 401) return;
+
+  // Stale access token — refresh once and retry, rather than silently dropping
+  // (or, worse, being invoked again on the next batched sample and 401ing again).
+  const refreshToken = await getItem('refreshToken');
+  if (!refreshToken) {
+    await safeSet(KEY_LAST_AUTH_FAILURE_AT, String(now));
+    return;
+  }
+  try {
+    const refreshRes = await fetch(`${base}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!refreshRes.ok) {
+      await safeSet(KEY_LAST_AUTH_FAILURE_AT, String(now));
+      return;
+    }
+    const { accessToken: newToken } = await refreshRes.json();
+    await setItem('accessToken', newToken);
+    await post(newToken).catch(() => {});
+  } catch {
+    await safeSet(KEY_LAST_AUTH_FAILURE_AT, String(now));
+  }
+}
+
 // Background task: post location, record speed, let the hook decide whether to escalate
 try {
   TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: any) => {
@@ -56,14 +128,7 @@ try {
     if (data?.locations?.length > 0) {
       const sample = data.locations[0].coords;
       const { latitude, longitude, accuracy, speed } = sample;
-      const token = getAccessToken();
-      if (!token) return;
-      const base = Platform.OS === 'web' ? '/api/v1' : API_BASE;
-      await fetch(`${base}/locations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ latitude, longitude, accuracy }),
-      }).catch(() => {});
+      await postLocationSample(latitude, longitude, accuracy);
       try {
         if (typeof speed === 'number' && speed >= 0) {
           await safeSet(KEY_LAST_SPEED, String(speed));

@@ -119,3 +119,51 @@ export async function sendOverdueReminders(): Promise<void> {
     console.log(`Sent overdue reminders to ${memberOverdue.length} member(s).`);
   }
 }
+
+export async function sendEventReminders(): Promise<void> {
+  if (!pushEnabled) return;
+
+  const upcoming = await db('calendar_event_instances as ci')
+    .join('calendar_events as ce', 'ci.event_id', 'ce.id')
+    .join('calendar_event_reminders as cer', 'cer.event_id', 'ce.id')
+    .where('ci.is_cancelled', false)
+    .whereNotNull('ce.event_time')
+    .whereNotExists(
+      db('calendar_event_reminder_log as l')
+        .whereRaw('l.instance_id = ci.id')
+        .whereRaw('l.minutes_before = cer.minutes_before')
+    )
+    .whereRaw(
+      `(ci.occurrence_date + ce.event_time - (cer.minutes_before * interval '1 minute')) BETWEEN now() AND now() + interval '10 minutes'`
+    )
+    .select('ci.id as instance_id', 'ci.event_id', 'ce.title', 'ce.icon', 'ce.household_id', 'cer.minutes_before');
+
+  for (const item of upcoming) {
+    const payload = {
+      title: 'ChoreQuest',
+      body: `Reminder: ${item.title} coming up`,
+      icon: item.icon || '📅',
+    };
+
+    const assignees = await db('calendar_event_assignees').where({ event_id: item.event_id }).select('member_id');
+    if (assignees.length > 0) {
+      for (const a of assignees) {
+        await sendNotification(a.member_id, payload);
+      }
+    } else {
+      const members = await db('household_members').where({ household_id: item.household_id });
+      for (const member of members) {
+        await sendNotification(member.id, payload);
+      }
+    }
+
+    await db('calendar_event_reminder_log')
+      .insert({ instance_id: item.instance_id, minutes_before: item.minutes_before })
+      .onConflict(['instance_id', 'minutes_before'])
+      .ignore();
+  }
+
+  if (upcoming.length > 0) {
+    console.log(`Sent event reminders for ${upcoming.length} occurrence(s).`);
+  }
+}
