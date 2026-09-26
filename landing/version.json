@@ -1,6 +1,6 @@
 {
-  "version": "1.1.0",
-  "runtimeVersion": "1.1.0",
-  "apkUrl": "/downloads/chorequest.apk",
-  "releaseNotes": "Live family map, adaptive GPS (5min/30s/5s during SOS), in-app update prompt"
+  "version": "1.2.0",
+  "runtimeVersion": "1.2.0",
+  "apkUrl": "/downloads/chorequest-1.2.0.apk",
+  "releaseNotes": "v1.2.0 \u2014 home-screen chore calendar widget (tap to check off today's chores)"
 }
